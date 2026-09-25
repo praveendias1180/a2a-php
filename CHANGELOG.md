@@ -6,6 +6,10 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-09-25
+
+Adds the Laravel bridge, released as `praveendias1180/a2a-laravel` 0.2.0 (both packages are versioned together from here on). The official A2A TCK passes at the MUST level against a queued Laravel app on PHP-FPM + nginx.
+
 ### Added
 - **Laravel bridge** (`praveendias1180/a2a-laravel`, `packages/laravel`), for Laravel 12 and 13 (11 allowed, untested):
   - `Route::a2a('/a2a', agentCard: ..., executor: ...)` mounts the Agent Card, JSON-RPC and HTTP+JSON, fills the card's interfaces in from the routes, and is `route:cache` safe. Agents can also come from `config/a2a.php`.
@@ -20,6 +24,7 @@ All notable changes to this project are documented here. The format follows
 - Docs: Laravel guides (install and first agent, queued execution, streaming behind nginx, storage and pruning).
 
 ### Changed
+- `praveendias1180/a2a-laravel` requires `praveendias1180/a2a-php` `^0.2`.
 - `tck/TckAgentExecutor.php`: the TCK executor moved out of `tck/sut-agent.php`, so the Laravel TCK app reuses it.
 
 ## [0.1.0] - 2026-09-25
@@ -99,5 +104,6 @@ First release: A2A 1.0 client and server for PHP 8.2+. The server passes the off
 - Requires `php-http/discovery` (finds a PSR-18 client when none is given) and
   `psr/http-factory` ^1.1.
 
-[Unreleased]: https://github.com/praveendias1180/a2a-php/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/praveendias1180/a2a-php/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/praveendias1180/a2a-php/releases/tag/v0.2.0
 [0.1.0]: https://github.com/praveendias1180/a2a-php/releases/tag/v0.1.0
