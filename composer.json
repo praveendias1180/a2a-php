@@ -1,0 +1,66 @@
+{
+    "name": "praveendias1180/a2a-php",
+    "description": "PHP SDK for the A2A (Agent2Agent) protocol: client, server and types, in the same shape as the official Python SDK.",
+    "type": "library",
+    "license": "Apache-2.0",
+    "keywords": ["a2a", "a2a-protocol", "agent2agent", "agent-to-agent", "ai-agents", "json-rpc", "sse"],
+    "homepage": "https://github.com/praveendias1180/a2a-php",
+    "support": {
+        "issues": "https://github.com/praveendias1180/a2a-php/issues",
+        "source": "https://github.com/praveendias1180/a2a-php"
+    },
+    "authors": [
+        {"name": "Praveen Dias", "homepage": "https://github.com/praveendias1180"}
+    ],
+    "require": {
+        "php": "^8.2",
+        "google/common-protos": "^4.12",
+        "google/protobuf": "^4.33 || ^5.0",
+        "psr/clock": "^1.0",
+        "psr/event-dispatcher": "^1.0",
+        "psr/http-client": "^1.0",
+        "psr/http-factory": "^1.0",
+        "psr/http-message": "^1.1 || ^2.0",
+        "psr/http-server-handler": "^1.0",
+        "psr/log": "^2.0 || ^3.0"
+    },
+    "require-dev": {
+        "friendsofphp/php-cs-fixer": "^3.64",
+        "illuminate/support": "^11.0 || ^12.0 || ^13.0",
+        "phpstan/phpstan": "^2.1",
+        "phpunit/phpunit": "^11.5"
+    },
+    "suggest": {
+        "ext-protobuf": "Faster protobuf encoding and decoding than the pure-PHP runtime",
+        "praveendias1180/a2a-laravel": "Laravel integration: routes, queued task runner, Redis streaming, Eloquent stores"
+    },
+    "autoload": {
+        "psr-4": {
+            "A2A\\": "src/",
+            "A2A\\Types\\": "generated/A2A/Types/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "A2A\\Tests\\": "tests/",
+            "A2A\\Laravel\\": "packages/laravel/src/",
+            "A2A\\Laravel\\Tests\\": "packages/laravel/tests/"
+        }
+    },
+    "scripts": {
+        "generate": "npx --yes @bufbuild/buf generate",
+        "test": "phpunit",
+        "analyse": "phpstan analyse",
+        "cs": "php-cs-fixer fix --dry-run --diff",
+        "cs:fix": "php-cs-fixer fix"
+    },
+    "config": {
+        "sort-packages": true
+    },
+    "extra": {
+        "a2a": {
+            "spec-version": "1.0.0",
+            "python-sdk-reference": "a2aproject/a2a-python@0d5473c"
+        }
+    }
+}

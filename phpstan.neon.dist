@@ -1,0 +1,9 @@
+parameters:
+    level: max
+    paths:
+        - src
+        - tests
+        - packages/laravel/src
+    # Generated protobuf code is checked by the "types are current" CI step, not by PHPStan.
+    excludePaths:
+        - generated

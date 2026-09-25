@@ -1,0 +1,23 @@
+# Generates the A2A wire types from the official a2a.proto.
+# Same input and pin as the Python SDK (a2a-python/buf.gen.yaml).
+# Run: composer generate   (never edit generated/ by hand)
+version: v2
+inputs:
+  - git_repo: https://github.com/a2aproject/A2A.git
+    ref: v1.0.0
+    subdir: specification
+managed:
+  enabled: true
+  disable:
+    # Leave Google's own protos alone: their PHP classes come from google/common-protos.
+    - module: buf.build/googleapis/googleapis
+  override:
+    - file_option: php_namespace
+      path: a2a.proto
+      value: A2A\Types
+    - file_option: php_metadata_namespace
+      path: a2a.proto
+      value: A2A\Types\GPBMetadata
+plugins:
+  - remote: buf.build/protocolbuffers/php:v36.2
+    out: generated

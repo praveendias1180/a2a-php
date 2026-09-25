@@ -1,0 +1,11 @@
+A2A PHP SDK
+Copyright 2026 Praveen Dias
+
+This product includes software developed as part of the A2A Project
+(https://github.com/a2aproject), licensed under the Apache License, Version 2.0:
+
+  - generated/ is generated from specification/a2a.proto in
+    https://github.com/a2aproject/A2A (Copyright The Linux Foundation).
+
+  - The public API is modelled on the A2A Python SDK,
+    https://github.com/a2aproject/a2a-python.

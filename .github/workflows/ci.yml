@@ -1,0 +1,57 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  tests:
+    name: PHP ${{ matrix.php }} (${{ matrix.deps }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        php: ['8.2', '8.3', '8.4', '8.5']
+        deps: [lowest, highest]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          coverage: none
+      - uses: ramsey/composer-install@v3
+        with:
+          dependency-versions: ${{ matrix.deps }}
+      - run: vendor/bin/phpunit
+
+  quality:
+    name: Static analysis and style
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          coverage: none
+      - uses: ramsey/composer-install@v3
+      - run: vendor/bin/phpstan analyse --no-progress
+      - run: vendor/bin/php-cs-fixer fix --dry-run --diff
+
+  types-current:
+    name: Generated types match a2a.proto
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: bufbuild/buf-action@v1
+        with:
+          setup_only: true
+      - run: buf generate
+      - name: Fail if src differs from a fresh generation
+        run: |
+          git status --porcelain generated
+          git diff --exit-code generated
+          test -z "$(git status --porcelain generated)"
