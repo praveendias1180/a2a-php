@@ -2,11 +2,14 @@
 
 A PHP implementation of the [A2A (Agent2Agent) protocol](https://a2a-protocol.org/latest/specification/), built in the **same shape as the official [Python SDK](https://github.com/a2aproject/a2a-python)**. If you know the Python SDK, you already know this one: the same classes in the same places, with `camelCase` methods.
 
-**Targets A2A 1.0**, the current spec. Types are generated from the official `a2a.proto`, and from phase 3 conformance is checked in CI with the official A2A test kit (TCK). Works with any framework (PSR-7/15/17/18), with a Laravel bridge.
+**Targets A2A 1.0**, the current spec. Types are generated from the official `a2a.proto`, and the server passes the official A2A test kit (TCK) at the MUST, SHOULD and MAY levels over JSON-RPC and HTTP+JSON, checked in CI on every push. Works with any framework (PSR-7/15/17/18), with a Laravel bridge.
+
+[![CI](https://github.com/praveendias1180/a2a-php/actions/workflows/ci.yml/badge.svg)](https://github.com/praveendias1180/a2a-php/actions/workflows/ci.yml)
+[![A2A TCK](https://img.shields.io/badge/A2A_TCK-MUST_137%2F137-brightgreen)](https://praveendias1180.github.io/a2a-php/reference/conformance/)
 
 📖 **Documentation: <https://praveendias1180.github.io/a2a-php/>**
 
-> **Status: early development (phase 3 of 7).** The wire types, utilities and the client are done, and the client is tested against the official Python SDK's sample agent. The server is not written yet. Don't use it in production. See the [roadmap](#roadmap).
+> **Status: early development (phase 4 of 7).** The wire types, utilities, client and server are done. The server passes the official A2A TCK, and the SDK interoperates with the official Python SDK in both directions. The Laravel bridge is next. The API may still change before 1.0. See the [roadmap](#roadmap).
 
 ## Packages
 
@@ -84,9 +87,9 @@ final class HelloExecutor implements AgentExecutor
 | 0 | Skeleton, CI, generated types | ✅ |
 | 1 | Types + utilities (errors, helpers, validators) | ✅ |
 | 2 | Client (JSON-RPC + REST + SSE) | ✅ |
-| 3 | Server core | the [A2A TCK](https://github.com/a2aproject/a2a-tck) passes at the MUST level |
+| 3 | Server core | ✅ |
 | 4 | Laravel bridge | the TCK passes against a Laravel app on php-fpm + nginx with queued execution |
-| 5 | Push notifications, card signing, PDO stores, extensions | the TCK passes at the SHOULD level |
+| 5 | Push notifications, card signing, extensions (the PDO stores arrived early, in phase 3) | the TCK passes at the SHOULD level |
 | 6 | v0.3 compatibility | a 0.3 client works against a 1.0 server |
 | 7 | 1.0.0 | stable release |
 

@@ -10,7 +10,7 @@ Build and call **[A2A](https://a2a-protocol.org/latest/specification/) agents in
 **Targets A2A 1.0**, the current version of the spec.
 
 !!! warning "Early development"
-    The wire types, utilities and client are done; the client is tested against the official Python SDK's sample agent. The server is being built. **Don't use this in production yet.** Progress is on the [roadmap](project/roadmap.md).
+    The client and the server are done. The server passes the official A2A test kit ([Conformance](reference/conformance.md)), and the SDK talks to the official Python SDK in both directions. The Laravel bridge is next, and the API may still change before 1.0. Progress is on the [roadmap](project/roadmap.md).
 
 <div class="grid cards" markdown>
 
@@ -26,7 +26,7 @@ Build and call **[A2A](https://a2a-protocol.org/latest/specification/) agents in
 
     ---
 
-    Types are generated from the official `a2a.proto` (v1.0.0), so the JSON on the wire is exactly what the spec defines. From phase 3, conformance is checked in CI with the official A2A test kit.
+    Types are generated from the official `a2a.proto` (v1.0.0), so the JSON on the wire is exactly what the spec defines. The server passes the official A2A test kit at every level, checked in CI ([Conformance](reference/conformance.md)).
 
 -   :simple-laravel: **Laravel bridge**
 

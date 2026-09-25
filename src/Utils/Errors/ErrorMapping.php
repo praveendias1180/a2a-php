@@ -37,11 +37,19 @@ final class ErrorMapping
      * [http code, gRPC status, ErrorInfo reason]. JSONParseError has no entry,
      * exactly as in Python: it only exists on the JSON-RPC transport.
      *
+     * One deliberate difference from Python: TaskNotCancelableError is HTTP
+     * 409. The released v1.0.0 spec table says 400 (and Python sends 400),
+     * but the official A2A TCK, which follows the v1.0 release-candidate
+     * table, requires 409 (CORE-CANCEL-002), and 409 Conflict is the honest
+     * status for "the task's state forbids this". The gRPC status and the
+     * ErrorInfo reason are unchanged, so clients that read the reason see no
+     * difference.
+     *
      * @var array<class-string<A2AError>, array{int, string, string}>
      */
     public const A2A_ERROR_MAPPING = [
         TaskNotFoundError::class => [404, 'NOT_FOUND', 'TASK_NOT_FOUND'],
-        TaskNotCancelableError::class => [400, 'FAILED_PRECONDITION', 'TASK_NOT_CANCELABLE'],
+        TaskNotCancelableError::class => [409, 'FAILED_PRECONDITION', 'TASK_NOT_CANCELABLE'],
         PushNotificationNotSupportedError::class => [400, 'FAILED_PRECONDITION', 'PUSH_NOTIFICATION_NOT_SUPPORTED'],
         UnsupportedOperationError::class => [400, 'FAILED_PRECONDITION', 'UNSUPPORTED_OPERATION'],
         ContentTypeNotSupportedError::class => [400, 'INVALID_ARGUMENT', 'CONTENT_TYPE_NOT_SUPPORTED'],

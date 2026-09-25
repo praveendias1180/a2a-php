@@ -35,7 +35,9 @@
         "symfony/http-client": "^6.4 || ^7.0 || ^8.0"
     },
     "suggest": {
+        "ext-pdo": "PdoTaskStore and PdoQueueManager (SQLite, PostgreSQL or MySQL), needed to serve agents under PHP-FPM or php -S",
         "ext-protobuf": "Faster protobuf encoding and decoding than the pure-PHP runtime",
+        "nyholm/psr7": "A PSR-7 implementation for the server (any PSR-7/PSR-17 library found by php-http/discovery works)",
         "praveendias1180/a2a-laravel": "Laravel integration: routes, queued task runner, Redis streaming, Eloquent stores"
     },
     "autoload": {

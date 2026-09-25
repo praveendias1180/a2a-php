@@ -44,6 +44,35 @@ All notable changes to this project are documented here. The format follows
 - Interop tests against the official Python SDK's sample agent (a2a-sdk 1.1.5): every
   client operation over JSON-RPC and HTTP+JSON, with Guzzle, Symfony HttpClient and a
   PSR-18 client (`scripts/run-python-interop.sh`, CI job `python-interop`).
+- The server (`A2A\Server\*`), in the shape of the Python SDK's `a2a.server`:
+  `AgentExecutor`, `RequestContext` (with `isCancelled()`), `RequestContextBuilder`,
+  `SimpleRequestContextBuilder`, `ActiveTask`, `EventConsumer`, `ActiveTaskRegistry`,
+  `EventQueue`, `InMemoryEventQueue`, `TaskStore`, `InMemoryTaskStore`,
+  `CopyingTaskStore`, `TaskManager`, `TaskUpdater`, `ResultAggregator`,
+  `PushNotificationConfigStore` (in-memory), `RequestHandler`, `DefaultRequestHandler`
+  (a port of Python's `DefaultRequestHandlerV2`), `ServerCallContext`, `OwnerResolver`
+  and `IdGenerator`/`UuidGenerator`.
+- The executor runs in a PHP Fiber: every enqueued event is checked, saved, published
+  and streamed before the executor continues. `TaskRunner` / `InlineTaskRunner` decide
+  where it runs, hold a per-task run lease and finish deferred work after the response.
+- `QueueManager` as a per-task event log with cancel flags and run leases, so separate
+  PHP processes can subscribe to, stream and cancel the same task:
+  `InMemoryQueueManager` and `PdoQueueManager` (SQLite, PostgreSQL, MySQL).
+- `PdoTaskStore` (SQLite, PostgreSQL, MySQL; owner scoping, keyset pagination), brought
+  forward from phase 5.
+- PSR-15 handlers: `JsonRpcDispatcher`, `RestDispatcher` (with tenant prefixes),
+  `AgentCardHandler` (`Cache-Control`, `ETag`, `Last-Modified`, 304), `Router`,
+  `Routes`; `ResponseEmitter` (per-event SSE flushing, disconnect detection, background
+  work after the response), `ServerRequestFactory`, `Sse\SseStream`,
+  `DefaultServerCallContextBuilder`.
+- `examples/hello-world` (a port of the Python SDK's sample agent) and `tck/sut-agent.php`.
+- Conformance: the official A2A TCK passes at the MUST (137/137), SHOULD and MAY levels
+  over JSON-RPC and HTTP+JSON (`scripts/run-tck.sh`, CI job `tck`), and the official
+  Python SDK client works against the PHP server over both transports.
+
+### Changed
+- `TaskNotCancelableError` maps to HTTP 409 (the A2A TCK's CORE-CANCEL-002; the released
+  v1.0.0 spec table and the Python SDK say 400). The ErrorInfo reason is unchanged.
 - `examples/call-an-agent.php`, shown on the docs site and run in CI.
 
 ### Changed

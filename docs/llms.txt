@@ -1,13 +1,13 @@
 # A2A PHP SDK
 
-> PHP SDK for the A2A (Agent2Agent) protocol, version 1.0. Same classes and layout as the official Python SDK (a2aproject/a2a-python), with camelCase methods. Framework-agnostic core on PSR-7/15/17/18, plus a Laravel bridge. Package: praveendias1180/a2a-php (Composer). Status: early development; wire types, utilities and the client are done (tested against the official Python SDK's sample agent), the server is being built.
+> PHP SDK for the A2A (Agent2Agent) protocol, version 1.0. Same classes and layout as the official Python SDK (a2aproject/a2a-python), with camelCase methods. Framework-agnostic core on PSR-7/15/17/18, plus a Laravel bridge. Package: praveendias1180/a2a-php (Composer). Status: early development (0.x); client and server are done, the server passes the official A2A TCK (MUST, SHOULD and MAY over JSON-RPC and HTTP+JSON) and interoperates with the official Python SDK both ways; the Laravel bridge is next.
 
 Key facts:
 
 - Targets A2A specification 1.0 (types generated from a2aproject/A2A a2a.proto v1.0.0). A 0.3 compatibility layer is planned.
 - Requires PHP 8.2+. Install: `composer require praveendias1180/a2a-php`.
 - Class names match the Python SDK: AgentExecutor, RequestContext, EventQueue, TaskUpdater, TaskStore, DefaultRequestHandler, ClientFactory, A2ACardResolver.
-- PHP-FPM can't keep work running after a request, so execution goes through a TaskRunner: inline (core) or queued with Redis streaming (Laravel).
+- PHP-FPM can't keep work running after a request: the executor runs in a PHP Fiber (events stream live), and tasks plus stream events live in a shared store (PdoTaskStore + PdoQueueManager on SQLite/PostgreSQL/MySQL) so separate PHP processes can subscribe and cancel. A queued runner with Redis comes with the Laravel bridge.
 - Not affiliated with the A2A Project or the Linux Foundation. Apache-2.0.
 
 ## Docs
@@ -17,6 +17,7 @@ Key facts:
 - [Your first agent](https://praveendias1180.github.io/a2a-php/get-started/first-agent/): executor, Agent Card, serving it
 - [Call an agent](https://praveendias1180.github.io/a2a-php/get-started/call-an-agent/): the client and streaming
 - [A2A in five minutes](https://praveendias1180.github.io/a2a-php/concepts/a2a-in-five-minutes/): objects, task lifecycle, operations
+- [Conformance](https://praveendias1180.github.io/a2a-php/reference/conformance/): official A2A TCK results
 - [Running agents in PHP](https://praveendias1180.github.io/a2a-php/concepts/running-agents-in-php/): task runners, queues, SSE behind nginx, cancellation
 
 ## Reference

@@ -55,8 +55,56 @@ jobs:
         with:
           python-version: '3.12'
       - run: pip install -r tests/Interop/python/requirements.txt
-      - name: PHP client against the Python sample server (JSON-RPC + HTTP+JSON)
+      - name: PHP client -> Python server, and Python client -> PHP server (JSON-RPC + HTTP+JSON)
         run: scripts/run-python-interop.sh
+
+  tck:
+    name: A2A TCK (JSON-RPC + HTTP+JSON)
+    runs-on: ubuntu-latest
+    env:
+      # Pinned a2a-tck commit; bump deliberately (see UPSTREAM.md).
+      A2A_TCK_REF: 263b9cfaf16a554bdfb166a7ba5b67716e946349
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          extensions: pdo_sqlite
+          coverage: none
+      - uses: ramsey/composer-install@v3
+      - uses: actions/checkout@v4
+        with:
+          repository: a2aproject/a2a-tck
+          ref: ${{ env.A2A_TCK_REF }}
+          path: a2a-tck
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install -e ./a2a-tck
+      - name: PHP-FPM and nginx for the SUT
+        # scripts/run-tck.sh starts its own unprivileged instances on 127.0.0.1;
+        # the packages' system services are not used.
+        run: |
+          command -v php-fpm8.4 || sudo apt-get install -y --no-install-recommends php8.4-fpm
+          command -v nginx || sudo apt-get install -y --no-install-recommends nginx-core
+      - name: MUST level (must pass)
+        run: A2A_TCK_DIR="$PWD/a2a-tck" scripts/run-tck.sh must
+      - name: Keep the MUST report
+        if: always()
+        run: cp -r a2a-tck/reports tck-reports-must
+      - name: SHOULD level (reported, not blocking)
+        continue-on-error: true
+        run: A2A_TCK_DIR="$PWD/a2a-tck" scripts/run-tck.sh should
+      - name: Keep the SHOULD report
+        if: always()
+        run: cp -r a2a-tck/reports tck-reports-should || true
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: tck-reports
+          path: |
+            tck-reports-must
+            tck-reports-should
 
   types-current:
     name: Generated types match a2a.proto

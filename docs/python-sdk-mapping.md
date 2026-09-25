@@ -30,29 +30,32 @@ Reference: `a2aproject/a2a-python` @ `0d5473c` (2026-09-24). This is PyPI `a2a-s
 | Python | PHP | Notes |
 |---|---|---|
 | `server/agent_execution/agent_executor.py` `AgentExecutor` | `Server\AgentExecution\AgentExecutor` (interface) | `execute(RequestContext, EventQueue): void`, `cancel(RequestContext, EventQueue): void`. **The one interface users write.** |
-| `…/context.py` `RequestContext` | `Server\AgentExecution\RequestContext` | `getUserInput()`, `taskId()`, `contextId()`, `currentTask()`, `relatedTasks()`, `configuration()`, `callContext()`, `requestedExtensions()`. |
+| `…/context.py` `RequestContext` | `Server\AgentExecution\RequestContext` | `getUserInput()`, `taskId()`, `contextId()`, `message()`, `currentTask()`, `relatedTasks()`, `configuration()`, `callContext()`, `metadata()`, `tenant()`, `requestedExtensions()`. PHP adds `isCancelled()` (cooperative cancellation, see `CancellationToken`). |
 | `…/request_context_builder.py`, `simple_request_context_builder.py` | same names | |
-| `…/active_task.py` `ActiveTask`, `EventConsumer` | `Server\AgentExecution\ActiveTask` | Python runs this as an asyncio task. PHP runs it inline or through a `TaskRunner` (see [architecture.md](architecture.md)). **This is the biggest place PHP has to differ.** |
-| `…/active_task_registry.py` | `Server\AgentExecution\ActiveTaskRegistry` | Per process. The cross-process version comes from the `QueueManager`. |
+| `…/active_task.py` `ActiveTask`, `EventConsumer` | `Server\AgentExecution\ActiveTask`, `Server\AgentExecution\EventConsumer` | Python runs the executor as an asyncio task. PHP runs it in a **Fiber**: each `enqueueEvent()` suspends it, the `EventConsumer` checks, saves and publishes the event, then it resumes. `TaskCancelledException` stands in for `asyncio.CancelledError`. **This is the biggest place PHP has to differ.** See [Running agents in PHP](concepts/running-agents-in-php.md). |
+| `…/active_task_registry.py` | `Server\AgentExecution\ActiveTaskRegistry` | Builds a fresh `ActiveTask` per request: a PHP process usually serves one request, so what must be shared lives in the `QueueManager`. |
+| — | `Server\AgentExecution\TaskRunner`, `InlineTaskRunner` | **PHP-only.** Decides where `execute()` runs (inline in the request here; on a queue worker in the Laravel bridge), holds the per-task run lease, and runs work deferred until after the response. |
 | `server/events/event_queue.py` `EventQueue` | `Server\Events\EventQueue` (interface) + `InMemoryEventQueue` | `enqueueEvent(Event)`. |
-| `…/queue_manager.py` `QueueManager`, `InMemoryQueueManager` | same | Laravel bridge adds `RedisQueueManager`. |
-| `…/event_consumer.py` | `Server\Events\EventConsumer` | Returns a `Generator` of events. |
+| `…/queue_manager.py` `QueueManager`, `InMemoryQueueManager` | same, plus `PdoQueueManager` | **Different shape:** a per-task append-only event log readable from a sequence number, plus the cancel flag and run leases, so separate PHP processes can stream and cancel the same task. `PdoQueueManager` uses SQLite/PostgreSQL/MySQL; the Laravel bridge adds Redis. |
+| `…/event_consumer.py`, `event_queue_v2.py` | not ported | Python's legacy consumer and its asyncio queue plumbing. The v2 consumer lives in `active_task.py` (see above). `PublishedEvent` is the PHP form of the `(event, updated_task)` pair Python queues for subscribers. |
 | `server/tasks/task_store.py` `TaskStore` | `Server\Tasks\TaskStore` (interface) | `save / get / list / delete`, each taking a `ServerCallContext`. |
-| `…/inmemory_task_store.py`, `copying_task_store.py` | same | |
-| `…/database_task_store.py` (SQLAlchemy) | `Server\Tasks\PdoTaskStore` | core; plain PDO, supports pgsql/mysql/sqlite. The Laravel bridge adds `EloquentTaskStore` + migrations. |
+| `…/inmemory_task_store.py`, `copying_task_store.py` | `InMemoryTaskStore`, `CopyingTaskStore` | In-memory only lives as long as the PHP process: use it in tests and long-running servers, not under PHP-FPM. |
+| `…/database_task_store.py` (SQLAlchemy) | `Server\Tasks\PdoTaskStore` | core; plain PDO, supports pgsql/mysql/sqlite, same owner scoping, ordering and page tokens. The Laravel bridge adds `EloquentTaskStore` + migrations. |
 | `…/task_manager.py`, `result_aggregator.py` | same | |
 | `…/task_updater.py` `TaskUpdater` | `Server\Tasks\TaskUpdater` | `updateStatus`, `addArtifact`, `complete`, `failed`, `reject`, `submit`, `startWork`, `cancel`, `requiresInput`, `requiresAuth`, `newAgentMessage`. |
-| `…/push_notification_config_store.py` + inmemory/database | `Server\Tasks\PushNotificationConfigStore` + `InMemory…`, `Pdo…` | |
+| `…/push_notification_config_store.py` + inmemory/database | `Server\Tasks\PushNotificationConfigStore` + `InMemoryPushNotificationConfigStore` | The PDO version and the sender arrive in phase 5. |
 | `…/push_notification_sender.py`, `base_push_notification_sender.py` | `Server\Tasks\PushNotificationSender`, `BasePushNotificationSender` | Sends through a PSR-18 client. |
-| `server/request_handlers/request_handler.py` `RequestHandler` | `Server\RequestHandlers\RequestHandler` (interface) | `onGetTask`, `onListTasks`, `onCancelTask`, `onMessageSend`, `onMessageSendStream` (returns a Generator), `onSubscribeToTask` (Generator), `on{Create,Get,List,Delete}TaskPushNotificationConfig`, `onGetExtendedAgentCard`. |
-| `…/default_request_handler_v2.py` `DefaultRequestHandler(V2)` | `Server\RequestHandlers\DefaultRequestHandler` | We port only V2. Python keeps the older `LegacyRequestHandler` around for its own compatibility; we have no old users to keep working, so we skip it. |
+| `server/request_handlers/request_handler.py` `RequestHandler` | `Server\RequestHandlers\RequestHandler` (interface) | `onGetTask`, `onListTasks`, `onCancelTask`, `onMessageSend`, `onMessageSendStream` (a Generator), `onSubscribeToTask` (a Generator; may yield `null` keep-alive ticks), `on{Create,Get,List,Delete}TaskPushNotificationConfig`, `onGetExtendedAgentCard`, and PHP's `runBackgroundWork()`. |
+| `…/default_request_handler_v2.py` `DefaultRequestHandler(V2)` | `Server\RequestHandlers\DefaultRequestHandler` | We port only V2. Python keeps the older `LegacyRequestHandler` around for its own compatibility; we have no old users to keep working, so we skip it. Differences are listed on [Conformance](reference/conformance.md). |
+| `…/response_helpers.py` | `Utils\ErrorHandlers`, `Server\Routes\Common` | Error envelopes come from phase 1's `ErrorHandlers`; `Common` holds the JSON helpers. |
 | `…/grpc_handler.py` | `Server\RequestHandlers\GrpcHandler` | grpc package, later. |
 | `server/context.py` `ServerCallContext` | `Server\ServerCallContext` | `user`, `state`, `requestedExtensions`, `tenant`. |
 | `server/owner_resolver.py`, `id_generator.py` | same | Owner = which user a task belongs to. This is how "not found" and "not allowed" stay the same. |
 | `server/routes/jsonrpc_dispatcher.py`, `rest_dispatcher.py` | `Server\Routes\JsonRpcDispatcher`, `RestDispatcher` | **PSR-15 `RequestHandlerInterface`s.** Any framework can mount them. |
-| `server/routes/{jsonrpc,rest,agent_card}_routes.py` `create_*_routes()` | `Server\Routes\Routes::jsonRpc()`, `::rest()`, `::agentCard()` | Return PSR-15 handlers keyed by path. |
+| `server/routes/{jsonrpc,rest,agent_card}_routes.py` `create_*_routes()` | `Server\Routes\Routes::jsonRpc()`, `::rest()`, `::agentCard()`, `::router()` | PSR-15 handlers. `AgentCardHandler` adds the caching headers the spec recommends. `Router` combines all three for plain-PHP front controllers. |
+| — | `Server\Routes\ResponseEmitter`, `ServerRequestFactory`, `Sse\SseStream` | **PHP-only.** Emit responses from plain PHP (flushing SSE per event, noticing disconnects, running background work after the response); build the PSR-7 request from globals; a PSR-7 body that streams SSE from a generator. |
 | `server/routes/fastapi_routes.py` `add_a2a_routes_to_fastapi` | **Laravel bridge:** `Route::a2a(...)` macro | The framework glue lives in the bridge package, not in core. |
-| `server/routes/common.py` `ServerCallContextBuilder` | same | Builds the context from the PSR-7 request (auth user, headers). |
+| `server/routes/common.py` `ServerCallContextBuilder`, `DefaultServerCallContextBuilder` | same | Builds the context from the PSR-7 request: headers, `A2A-Extensions`, and the user your auth middleware stored in the `a2a.user` request attribute. |
 
 ### Client
 

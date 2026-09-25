@@ -24,6 +24,7 @@ nav = [
   { "Reference" = [
     { "Python → PHP mapping" = "python-sdk-mapping.md" },
     { "Architecture" = "architecture.md" },
+    { "Conformance" = "reference/conformance.md" },
   ] },
   { "Project" = [
     { "Roadmap" = "project/roadmap.md" },

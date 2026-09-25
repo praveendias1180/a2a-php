@@ -24,50 +24,77 @@ How the PHP SDK maps the Python SDK's design onto PHP, and where it has to diffe
 
 ## 3. The runtime problem, and how we handle it
 
-In Python, `DefaultRequestHandler` starts the executor as an asyncio task. That task keeps running after `SendMessage` returns, and many streams can listen to it. **PHP-FPM can't do that.** Everything is one request, one process, then exit. So we put execution behind one interface:
+In Python, `DefaultRequestHandler` starts the executor as an asyncio task. That task keeps running after `SendMessage` returns, and many streams can listen to it. **PHP-FPM can't do that.** Everything is one request, one process, then exit. Three pieces solve it (built in phase 3).
+
+**1. The executor runs in a Fiber (`ActiveTask`).** Each `enqueueEvent()` suspends the Fiber. The `EventConsumer` then:
+- checks the event (the same rules as Python: one Message *or* task mode, nothing after a terminal state),
+- applies it through the `TaskManager`,
+- publishes it to the `QueueManager`,
+- and the event is yielded to the caller.
+
+Then the Fiber resumes. A caller that stops pulling early (`returnImmediately`, an interrupted state) hands the rest to `TaskRunner::defer()`, which runs after the response.
+
+**2. Execution goes behind one interface, `TaskRunner`:**
 
 ```php
 interface TaskRunner {
-    /** Start running the executor for this task. May run inline or elsewhere. */
-    public function start(RequestContext $ctx, AgentExecutor $executor): void;
-    public function cancel(string $taskId, ServerCallContext $call): void;
+    /** Run one request against the task; yield each event as it is processed. */
+    public function run(ActiveTask $activeTask, RequestContext $context): \Generator;
+    /** Work to finish after the HTTP response has been sent. */
+    public function defer(\Closure $work): void;
+    public function runDeferred(): void;
 }
 ```
 
-Events always go through a `QueueManager` and are always saved to the `TaskStore`, so any process can rebuild the state of any task.
+**3. What processes must share lives in a `QueueManager`,** now a per-task event log plus coordination flags:
+
+```php
+interface QueueManager {
+    public function publish(string $taskId, PublishedEvent $event): int;          // returns the sequence number
+    public function read(string $taskId, int $afterSequence, float $waitSeconds = 0.0): array;
+    public function lastSequence(string $taskId): int;
+    public function requestCancel(string $taskId): void;
+    public function isCancelRequested(string $taskId): bool;
+    public function acquireRunLease(string $taskId, int $ttlSeconds): bool;       // "a process is running this task"
+    public function releaseRunLease(string $taskId): void;
+    public function hasActiveRunLease(string $taskId): bool;
+}
+```
+
+Implementations: `InMemoryQueueManager` (one process), `PdoQueueManager` (SQLite/PostgreSQL/MySQL, polled), and Redis Streams in the Laravel bridge.
 
 | Runner | Where | `SendMessage` (blocking) | `returnImmediately` | `SendStreamingMessage` | `SubscribeToTask` from another request | Cancel |
 |---|---|---|---|---|---|---|
-| **`InlineTaskRunner`** (core default) | same request | runs the executor now, returns when it's final or paused | runs until the **first** event, sends the response, then finishes the work after the response has gone out (`fastcgi_finish_request()` when available). Tasks that take minutes need a real queue | runs inline; each event is flushed as SSE while `execute()` runs | works only for tasks in the same process; otherwise it replays saved state and closes | `CancellationToken` flag |
-| **`QueuedTaskRunner`** (Laravel) | a queue job (`RunAgentExecutor`) on a Horizon/supervisor worker | request process waits on the Redis event stream until the task is final or paused (with a timeout) | sends a job, returns the `SUBMITTED` task at once | request process reads the Redis stream (`XREAD BLOCK`) and writes SSE | same as streaming: any web process can attach to the stream | sets the cancel flag in the store + Redis; the executor checks `isCancelled()`; the job ends |
+| **`InlineTaskRunner`** (core default, built) | same request, in a Fiber | runs the executor now, returns when it's final or paused | answers with the first event, finishes the work after the response (`fastcgi_finish_request()` under PHP-FPM) | each event is flushed as SSE while `execute()` runs | reads the task's event log from the `QueueManager` (`PdoQueueManager` across processes) | sets the cancel flag; the running request stops the executor at its next event; after 10 s the cancel request finishes the job itself |
+| **`QueuedTaskRunner`** (Laravel, phase 4) | a queue job on a Horizon/supervisor worker | request process waits on the Redis event stream until the task is final or paused (with a timeout) | sends a job, returns the `SUBMITTED` task at once | request process reads the Redis stream (`XREAD BLOCK`) and writes SSE | same as streaming | same flag; the job's executor sees it |
 | **Long-running** (later) | RoadRunner / Swoole / ReactPHP / amphp | true concurrency, like Python | same | same | same | same |
 
 **Rules the Python docstrings already state, which we keep:**
-- `execute()` is never called twice at once for the same task. Laravel enforces this with a per-task cache lock.
-- An exception thrown from `execute()` → the task moves to `FAILED`.
+- `execute()` is never called twice at once for the same task. The run lease enforces it across processes.
+- An exception thrown from `execute()` moves the task to `FAILED`. The change is published, so subscribers elsewhere stop waiting.
 - After `execute()` returns, the executor must not touch the context or the queue.
 - For `INPUT_REQUIRED`, publish the status and return. The next message with that `taskId` calls `execute()` again.
 
 **Event ordering (a spec MUST):**
-- Redis Streams keep order per task (one stream key per task).
+- Every event gets a growing sequence number in the task's log.
 - SSE writes flush after each event.
-- The spec's "every stream gets the same events" rule works because every subscriber reads the same stream from its start point.
+- The spec's "every stream gets the same events" rule works because every subscriber reads the same log from its start point.
 
 **SSE on PHP-FPM behind nginx:**
-- Send `X-Accel-Buffering: no`, turn off output buffering, and `flush()` each event.
-- Send a keep-alive comment every ~15s.
-- Document the nginx `fastcgi_buffering off` setting for the SSE location.
-- The Laravel bridge uses `response()->stream()` / `StreamedResponse`.
+- `ResponseEmitter` turns off output buffering, sends `X-Accel-Buffering: no` and flushes each event.
+- Idle streams send a keep-alive comment every 15 s (`keepAliveSeconds`). `maxSubscribeIdleSeconds` optionally ends quiet subscriptions so abandoned connections can't pin workers.
+- Set nginx `fastcgi_buffering off` for the SSE location.
+- The Laravel bridge will use `response()->stream()` / `StreamedResponse`.
 
 ## 4. Storage
 
 | Store | Core | Laravel |
 |---|---|---|
-| `TaskStore` | `InMemoryTaskStore`, `PdoTaskStore` (one `a2a_tasks` table: id, context_id, owner, status_state, status_ts, protocol_version, task_json, last_updated) | `EloquentTaskStore` on the app's connection + publishable migration |
-| `PushNotificationConfigStore` | InMemory, Pdo | Eloquent, **tokens stored encrypted** (`encrypted` cast) |
-| `QueueManager` | InMemory | Redis Streams (`a2a:task:{id}`), with a TTL after the task goes final |
+| `TaskStore` | `InMemoryTaskStore`, `PdoTaskStore` (one `{prefix}tasks` table: id, context_id, owner, status_state, status_timestamp (µs), protocol_version, task_json) | `EloquentTaskStore` on the app's connection + publishable migration |
+| `PushNotificationConfigStore` | InMemory (Pdo in phase 5) | Eloquent, **tokens stored encrypted** (`encrypted` cast) |
+| `QueueManager` | InMemory, `PdoQueueManager` (`{prefix}task_events`, `{prefix}task_flags`) | Redis Streams (`a2a:task:{id}`), with a TTL after the task goes final |
 
-The Python `DatabaseTaskStore` columns (including the `owner` and `protocol_version` migrations) are the model for our schema, so both SDKs store the same thing.
+The Python `DatabaseTaskStore` columns (including the `owner` and `protocol_version` migrations) are the model for our schema, so both SDKs store the same thing. `PdoQueueManager::prune()` deletes old events; run it from a scheduled job.
 
 ## 5. Transports
 

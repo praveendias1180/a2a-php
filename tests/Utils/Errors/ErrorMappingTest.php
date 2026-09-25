@@ -36,7 +36,7 @@ final class ErrorMappingTest extends TestCase
     {
         // class, JSON-RPC code, HTTP code, gRPC status, reason, default message
         yield 'TaskNotFound' => [TaskNotFoundError::class, -32001, 404, 'NOT_FOUND', 'TASK_NOT_FOUND', 'Task not found'];
-        yield 'TaskNotCancelable' => [TaskNotCancelableError::class, -32002, 400, 'FAILED_PRECONDITION', 'TASK_NOT_CANCELABLE', 'Task cannot be canceled'];
+        yield 'TaskNotCancelable' => [TaskNotCancelableError::class, -32002, 409, 'FAILED_PRECONDITION', 'TASK_NOT_CANCELABLE', 'Task cannot be canceled'];
         yield 'PushNotSupported' => [PushNotificationNotSupportedError::class, -32003, 400, 'FAILED_PRECONDITION', 'PUSH_NOTIFICATION_NOT_SUPPORTED', 'Push Notification is not supported'];
         yield 'UnsupportedOperation' => [UnsupportedOperationError::class, -32004, 400, 'FAILED_PRECONDITION', 'UNSUPPORTED_OPERATION', 'This operation is not supported'];
         yield 'ContentTypeNotSupported' => [ContentTypeNotSupportedError::class, -32005, 400, 'INVALID_ARGUMENT', 'CONTENT_TYPE_NOT_SUPPORTED', 'Incompatible content types'];
