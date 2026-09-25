@@ -15,9 +15,10 @@ It is tested in CI against the official Python SDK's sample agent, over both tra
 === "Laravel"
 
     ```php
-    // The A2A facade arrives with the Laravel bridge (phase 4). Until then the
-    // Plain PHP code works as is in Laravel: Guzzle is already installed.
+    --8<-- "examples/laravel/CallAgent.php:call"
     ```
+
+    `A2A::client()` uses Guzzle, which Laravel ships, so streams arrive live. Bind an `A2A\Client\ClientConfig` in the container to set transports or the HTTP client for the whole app.
 
 === "Python"
 

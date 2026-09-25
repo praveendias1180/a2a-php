@@ -2,21 +2,21 @@
 
 A PHP implementation of the [A2A (Agent2Agent) protocol](https://a2a-protocol.org/latest/specification/), built in the **same shape as the official [Python SDK](https://github.com/a2aproject/a2a-python)**. If you know the Python SDK, you already know this one: the same classes in the same places, with `camelCase` methods.
 
-**Targets A2A 1.0**, the current spec. Types are generated from the official `a2a.proto`, and the server passes the official A2A test kit (TCK) at the MUST, SHOULD and MAY levels over JSON-RPC and HTTP+JSON, checked in CI on every push. Works with any framework (PSR-7/15/17/18), with a Laravel bridge.
+**Targets A2A 1.0**, the current spec. Types are generated from the official `a2a.proto`, and the server passes the official A2A test kit (TCK) at the MUST, SHOULD and MAY levels over JSON-RPC and HTTP+JSON, checked in CI on every push, both as plain PHP and as a Laravel app with queued execution. Works with any framework (PSR-7/15/17/18), with a Laravel bridge.
 
 [![CI](https://github.com/praveendias1180/a2a-php/actions/workflows/ci.yml/badge.svg)](https://github.com/praveendias1180/a2a-php/actions/workflows/ci.yml)
 [![A2A TCK](https://img.shields.io/badge/A2A_TCK-MUST_137%2F137-brightgreen)](https://praveendias1180.github.io/a2a-php/reference/conformance/)
 
 📖 **Documentation: <https://praveendias1180.github.io/a2a-php/>**
 
-> **Status: early development (phase 4 of 7).** The wire types, utilities, client and server are done. The server passes the official A2A TCK, and the SDK interoperates with the official Python SDK in both directions. The Laravel bridge is next. The API may still change before 1.0. See the [roadmap](#roadmap).
+> **Status: early development (phase 5 of 7).** The wire types, utilities, client, server and Laravel bridge are done. The server passes the official A2A TCK (plain PHP, and a Laravel app running executors on queue workers), and the SDK interoperates with the official Python SDK in both directions. Push notifications and card signing are next. The API may still change before 1.0. See the [roadmap](#roadmap).
 
 ## Packages
 
 | Package | What it is |
 |---|---|
 | [`praveendias1180/a2a-php`](https://packagist.org/packages/praveendias1180/a2a-php) | The SDK itself. Works with any framework, built on PSR-7/15/17/18. This repo. |
-| [`praveendias1180/a2a-laravel`](https://packagist.org/packages/praveendias1180/a2a-laravel) | Laravel bridge: routes, queued task runner, Redis streaming, Eloquent stores. Lives in [`packages/laravel`](packages/laravel) and is published as a read-only split. |
+| [`praveendias1180/a2a-laravel`](https://github.com/praveendias1180/a2a-laravel) | Laravel bridge: `Route::a2a()`, queued execution on your workers with live SSE streaming (Redis Streams or the database), owner-scoped storage, artisan commands. Lives in [`packages/laravel`](packages/laravel) and is published as a read-only split. |
 
 Requires PHP 8.2+.
 
@@ -28,7 +28,7 @@ composer require praveendias1180/a2a-php
 
 | A2A spec | Status |
 |---|---|
-| 1.0 | in progress; target of the first release |
+| 1.0 | **supported since v0.1.0.** The server passes the official A2A TCK at the MUST, SHOULD and MAY levels over JSON-RPC and HTTP+JSON; the client interoperates with the official Python SDK in both directions. |
 | 0.3 | planned as a compatibility layer (phase 6) |
 
 Types are generated from the official [`a2a.proto`](https://github.com/a2aproject/A2A/blob/v1.0.0/specification/a2a.proto) (v1.0.0, the same pin as the Python SDK). JSON on the wire is standard ProtoJSON.
@@ -53,32 +53,84 @@ foreach ($client->sendMessage($request) as $event) {   // streams (SSE) when the
 
 JSON-RPC and HTTP+JSON, every A2A operation, tested in CI against the official Python SDK's sample agent. Works with Guzzle or Symfony HttpClient (live streaming) or any PSR-18 client. More in [Call an agent](https://praveendias1180.github.io/a2a-php/get-started/call-an-agent/).
 
-## Serve an agent (coming in phase 3)
+## Serve an agent
 
-The server API, as in the Python SDK's hello-world sample:
+The SDK's [`examples/hello-world`](examples/hello-world) (a port of the Python SDK's `hello_world_agent.py`, run in CI against the official Python client and the A2A TCK):
 
 ```php
-use A2A\Server\AgentExecution\{AgentExecutor, RequestContext};
-use A2A\Server\Events\EventQueue;
-use A2A\Server\Tasks\TaskUpdater;
-use A2A\Types\Part;
-
 final class HelloExecutor implements AgentExecutor
 {
     public function execute(RequestContext $context, EventQueue $eventQueue): void
     {
-        $updater = new TaskUpdater($eventQueue, $context->taskId(), $context->contextId());
-        $updater->startWork();
-        $updater->addArtifact([new Part(['text' => 'Hello, ' . $context->getUserInput()])], name: 'response', lastChunk: true);
+        $userMessage = $context->message();
+        $taskId = $context->taskId();
+        $contextId = $context->contextId();
+        if ($userMessage === null || $taskId === null || $contextId === null) {
+            return;
+        }
+
+        $eventQueue->enqueueEvent(new Task([
+            'id' => $taskId,
+            'context_id' => $contextId,
+            'status' => new TaskStatus(['state' => TaskState::TASK_STATE_SUBMITTED]),
+            'history' => [$userMessage],
+        ]));
+
+        $updater = new TaskUpdater($eventQueue, $taskId, $contextId);
+        $updater->startWork($updater->newAgentMessage([new Part(['text' => 'Processing your question...'])]));
+
+        $reply = $this->parseInput($context->getUserInput());
+        sleep(1);
+
+        // Python tracks running tasks in a set; a PHP request can be
+        // cancelled from another process, so ask the context instead.
+        if ($context->isCancelled()) {
+            return;
+        }
+
+        $updater->addArtifact([new Part(['text' => $reply])], name: 'response', lastChunk: true);
         $updater->complete();
     }
 
-    public function cancel(RequestContext $context, EventQueue $eventQueue): void
-    {
-        (new TaskUpdater($eventQueue, $context->taskId(), $context->contextId()))->cancel();
-    }
+    // cancel() and parseInput(): see examples/hello-world/HelloExecutor.php
 }
 ```
+
+Serving it (`examples/hello-world/server.php`, with the card defined above that point):
+
+```php
+$pdo = new PDO('sqlite:' . (getenv('A2A_DB') ?: sys_get_temp_dir() . '/a2a-php-hello-world.sqlite'));
+$handler = new DefaultRequestHandler(
+    agentExecutor: new HelloExecutor(),
+    taskStore: new PdoTaskStore($pdo),
+    agentCard: $agentCard,
+    queueManager: new PdoQueueManager($pdo),
+);
+
+$router = Routes::router($handler, $agentCard, jsonRpcPath: '/a2a/jsonrpc', restPrefix: '/a2a/rest');
+(new ResponseEmitter($handler))->emit($router->handle($request));
+```
+
+```bash
+PHP_CLI_SERVER_WORKERS=4 php -S 127.0.0.1:41241 examples/hello-world/server.php
+```
+
+Every PHP request is its own process, so tasks and events live in a shared database (SQLite here). More in [Your first agent](https://praveendias1180.github.io/a2a-php/get-started/first-agent/).
+
+### In Laravel
+
+```bash
+composer require praveendias1180/a2a-laravel
+php artisan vendor:publish --tag=a2a-migrations && php artisan migrate
+php artisan a2a:make-executor Hello
+```
+
+```php
+// routes/api.php (from examples/laravel)
+Route::a2a('/a2a', agentCard: HelloAgentCard::class, executor: HelloExecutor::class);
+```
+
+That mounts the Agent Card, JSON-RPC and HTTP+JSON. Set `A2A_RUNNER=queued` and the executor runs on your queue workers while the web request streams its events live. The [Laravel guide](https://praveendias1180.github.io/a2a-php/guides/laravel/) has the rest.
 
 ## Roadmap
 
@@ -88,7 +140,7 @@ final class HelloExecutor implements AgentExecutor
 | 1 | Types + utilities (errors, helpers, validators) | ✅ |
 | 2 | Client (JSON-RPC + REST + SSE) | ✅ |
 | 3 | Server core | ✅ |
-| 4 | Laravel bridge | the TCK passes against a Laravel app on php-fpm + nginx with queued execution |
+| 4 | Laravel bridge | ✅ |
 | 5 | Push notifications, card signing, extensions (the PDO stores arrived early, in phase 3) | the TCK passes at the SHOULD level |
 | 6 | v0.3 compatibility | a 0.3 client works against a 1.0 server |
 | 7 | 1.0.0 | stable release |

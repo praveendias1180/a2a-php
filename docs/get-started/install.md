@@ -13,7 +13,7 @@ composer require praveendias1180/a2a-php
 ```
 
 !!! note "Pre-1.0"
-    Versions are `0.x` until 1.0, so minor releases may still change the API. Pin a minor version (`^0.1`) and read the [changelog](../project/changelog.md) before upgrading.
+    Versions are `0.x` until 1.0, so minor releases may still change the API. Pin a minor version (`^0.2`) and read the [changelog](../project/changelog.md) before upgrading.
 
 ### Faster protobuf (optional)
 
@@ -25,13 +25,13 @@ pecl install protobuf
 
 ## Laravel
 
-The Laravel bridge arrives in phase 4 ([roadmap](../project/roadmap.md)). It will be:
-
 ```bash
 composer require praveendias1180/a2a-laravel
+php artisan vendor:publish --tag=a2a-migrations
+php artisan migrate
 ```
 
-The service provider registers itself through package discovery.
+The service provider registers itself through package discovery. Publish the config too (`--tag=a2a-config`) to change the runner, queue or storage. Laravel 12 and 13 are tested (11 is allowed, but Composer blocks its releases for security advisories). See the [Laravel guide](../guides/laravel.md).
 
 ## Check it works
 

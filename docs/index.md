@@ -32,9 +32,9 @@ Build and call **[A2A](https://a2a-protocol.org/latest/specification/) agents in
 
     ---
 
-    `Route::a2a()`, queued execution on your workers, streaming over Redis and SSE, and Eloquent storage. PHP-FPM can't keep work running after a request ends, so the bridge moves long tasks to a queue.
+    `Route::a2a()`, queued execution on your workers, live SSE streaming through Redis Streams or the database, and owner-scoped storage. PHP-FPM can't keep work running after a request ends, so the bridge moves long tasks to a queue. It passes the A2A TCK too.
 
-    [:octicons-arrow-right-24: Running agents in PHP](concepts/running-agents-in-php.md)
+    [:octicons-arrow-right-24: The Laravel guide](guides/laravel.md)
 
 -   :material-puzzle: **Works with any framework**
 
@@ -71,7 +71,8 @@ An agent that answers "hello", written the same way in both SDKs:
 === "Laravel"
 
     ```php
-    // app/A2A/HelloExecutor.php: the same class as the Plain PHP tab.
+    // app/A2A/HelloExecutor.php (php artisan a2a:make-executor Hello): the same class as the Plain PHP tab.
+
     // routes/api.php
     Route::a2a('/a2a', agentCard: HelloAgentCard::class, executor: HelloExecutor::class)
         ->middleware('auth:sanctum');
@@ -99,6 +100,6 @@ An agent that answers "hello", written the same way in both SDKs:
 | Package | Install |
 |---|---|
 | [`praveendias1180/a2a-php`](https://packagist.org/packages/praveendias1180/a2a-php): the SDK | `composer require praveendias1180/a2a-php` |
-| [`praveendias1180/a2a-laravel`](https://github.com/praveendias1180/a2a-laravel): Laravel bridge | available from phase 4 |
+| [`praveendias1180/a2a-laravel`](https://github.com/praveendias1180/a2a-laravel): Laravel bridge | `composer require praveendias1180/a2a-laravel` |
 
 Requires PHP 8.2 or newer.

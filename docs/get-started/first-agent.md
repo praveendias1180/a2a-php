@@ -18,10 +18,17 @@ The code on this page is the SDK's `examples/hello-world`, a port of the Python 
 
 === "Laravel"
 
-    ```php
-    // The same class works in Laravel. `php artisan a2a:make-executor`
-    // arrives with the Laravel bridge (phase 4).
+    ```bash
+    php artisan a2a:make-executor Hello
     ```
+
+    That writes `app/A2A/HelloExecutor.php`. With a reply filled in:
+
+    ```php
+    --8<-- "examples/laravel/HelloExecutor.php:executor"
+    ```
+
+    The executor is resolved from the container, so its constructor can take your services.
 
 === "Python"
 
@@ -59,9 +66,10 @@ Each `enqueueEvent()` and each `TaskUpdater` call is saved and streamed to clien
 === "Laravel"
 
     ```php
-    // config/a2a.php will hold these fields; the bridge fills in the
-    // interface URLs from your routes (phase 4).
+    --8<-- "examples/laravel/HelloAgentCard.php:card"
     ```
+
+    You can also put the card in `config/a2a.php` as an array.
 
 === "Python"
 
@@ -101,9 +109,10 @@ Each `enqueueEvent()` and each `TaskUpdater` call is saved and streamed to clien
 === "Laravel"
 
     ```php
-    // routes/api.php, with the Laravel bridge (phase 4):
-    Route::a2a('/a2a', agentCard: HelloAgentCard::class, executor: HelloExecutor::class);
+    --8<-- "examples/laravel/routes.php:route"
     ```
+
+    That one line mounts the Agent Card at `/.well-known/agent-card.json` (and `/a2a/.well-known/agent-card.json`), JSON-RPC at `/a2a/jsonrpc` and HTTP+JSON under `/a2a/rest`, and fills the card's interface URLs in from those routes. The [Laravel guide](../guides/laravel.md) covers auth, queued execution and storage.
 
 === "Python"
 
@@ -145,7 +154,7 @@ The same server answers the official Python SDK client, the A2A test kit, and an
 | Piece | Default | Other options |
 |---|---|---|
 | `TaskStore` | none (you choose) | `PdoTaskStore` (SQLite, PostgreSQL, MySQL), `InMemoryTaskStore`, your own |
-| `QueueManager` | `InMemoryQueueManager` | `PdoQueueManager`; the Laravel bridge adds Redis |
-| `TaskRunner` | `InlineTaskRunner` (runs in the request) | the Laravel bridge adds a queued runner |
+| `QueueManager` | `InMemoryQueueManager` | `PdoQueueManager`; the Laravel bridge adds `RedisQueueManager` (Redis Streams) |
+| `TaskRunner` | `InlineTaskRunner` (runs in the request) | the Laravel bridge adds `QueuedTaskRunner` (runs on a queue worker) |
 | `ServerCallContextBuilder` | reads the `a2a.user` request attribute | your own, to plug in authentication |
 | `PushNotificationConfigStore` | none (push is off) | `InMemoryPushNotificationConfigStore`; sending arrives in phase 5 |

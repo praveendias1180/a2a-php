@@ -6,6 +6,22 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Added
+- **Laravel bridge** (`praveendias1180/a2a-laravel`, `packages/laravel`), for Laravel 12 and 13 (11 allowed, untested):
+  - `Route::a2a('/a2a', agentCard: ..., executor: ...)` mounts the Agent Card, JSON-RPC and HTTP+JSON, fills the card's interfaces in from the routes, and is `route:cache` safe. Agents can also come from `config/a2a.php`.
+  - `QueuedTaskRunner` + `RunAgentExecutor` job: executors run on queue workers while the web request streams their events live; one run per task at a time (run lease); executor errors fail the call the same way as with the inline runner.
+  - `RedisQueueManager` (Redis Streams, `XREAD BLOCK`, atomic sequence numbers, expiring keys), or the core `PdoQueueManager` on the app's connection.
+  - Tasks in the core `PdoTaskStore` on the app's connection; push-notification configs in the database, encrypted with the app key. Owner scoping from the authenticated Laravel user.
+  - Security schemes in the card map to route middleware (`a2a.security_schemes`); CSRF is off for the protocol routes.
+  - `A2A::client()` facade; artisan `a2a:make-executor`, `a2a:card`, `a2a:prune`, `a2a:tck`; publishable config and migration.
+  - `scripts/run-tck-laravel.sh`: the official A2A TCK against a real Laravel app on PHP-FPM + nginx with the queued runner and queue workers (also a CI job), and a 20 s long-task proof.
+- `ResponseEmitter::streamSse()`: the SSE pump, public so framework bridges stream exactly like the plain-PHP emitter.
+- `examples/laravel/`: the Laravel examples shown in the docs, run by the test suite.
+- Docs: Laravel guides (install and first agent, queued execution, streaming behind nginx, storage and pruning).
+
+### Changed
+- `tck/TckAgentExecutor.php`: the TCK executor moved out of `tck/sut-agent.php`, so the Laravel TCK app reuses it.
+
 ## [0.1.0] - 2026-09-25
 
 First release: A2A 1.0 client and server for PHP 8.2+. The server passes the official A2A TCK at the MUST level (137 passed) over JSON-RPC and HTTP+JSON. The Laravel bridge is not included yet (phase 4).

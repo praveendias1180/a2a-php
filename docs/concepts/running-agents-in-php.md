@@ -34,11 +34,11 @@ Both PDO classes work with SQLite, PostgreSQL and MySQL and create their tables 
 
 ### 3. Where the executor runs: `TaskRunner`
 
-| | `InlineTaskRunner` (core, default) | Queued runner (Laravel bridge, phase 4) |
+| | `InlineTaskRunner` (core, default) | `QueuedTaskRunner` (Laravel bridge) |
 |---|---|---|
 | Where `execute()` runs | in the web request, in a Fiber | a queue job on your workers |
-| `SendMessage` | runs now, answers when the task finishes or pauses | waits on the task's event stream |
-| `returnImmediately` | answers with the first event, finishes after the response | answers at once |
+| `SendMessage` | runs now, answers when the task finishes or pauses | dispatches a job, then relays the task's events until it finishes or pauses |
+| `returnImmediately` | answers with the first event, finishes after the response | answers with the first event; the worker finishes the task |
 | Streaming | live SSE from this process | the web process relays the event stream |
 | Good for | anything that finishes within your request timeout | long tasks |
 

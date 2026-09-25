@@ -42,20 +42,7 @@ final class ResponseEmitter
         }
 
         if ($streaming) {
-            ignore_user_abort(true);
-            set_time_limit(0);
-            while (ob_get_level() > 0) {
-                ob_end_flush();
-            }
-            flush();
-            foreach ($body->chunks() as $chunk) {
-                echo $chunk;
-                flush();
-                if (connection_aborted() !== 0) {
-                    $body->clientDisconnected();
-                    break;
-                }
-            }
+            self::streamSse($body);
         } else {
             $content = (string) $body;
             if (!headers_sent()) {
@@ -72,5 +59,34 @@ final class ResponseEmitter
         }
 
         $this->requestHandler?->runBackgroundWork();
+    }
+
+    /**
+     * Writes an SSE body to the client event by event: output buffering off,
+     * a flush after every event, and the stream told when the client has
+     * gone (PHP only notices at the next write). Framework bridges call this
+     * from their own streamed-response callback.
+     *
+     * @param bool $endOutputBuffers close PHP's output buffers first (needed for live streaming when
+     *                               php.ini sets output_buffering); tests that capture the output pass false
+     */
+    public static function streamSse(SseStream $body, bool $endOutputBuffers = true): void
+    {
+        ignore_user_abort(true);
+        set_time_limit(0);
+        if ($endOutputBuffers) {
+            while (ob_get_level() > 0) {
+                ob_end_flush();
+            }
+        }
+        flush();
+        foreach ($body->chunks() as $chunk) {
+            echo $chunk;
+            flush();
+            if (connection_aborted() !== 0) {
+                $body->clientDisconnected();
+                break;
+            }
+        }
     }
 }

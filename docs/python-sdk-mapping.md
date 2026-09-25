@@ -40,7 +40,7 @@ Reference: `a2aproject/a2a-python` @ `0d5473c` (2026-09-24). This is PyPI `a2a-s
 | `…/event_consumer.py`, `event_queue_v2.py` | not ported | Python's legacy consumer and its asyncio queue plumbing. The v2 consumer lives in `active_task.py` (see above). `PublishedEvent` is the PHP form of the `(event, updated_task)` pair Python queues for subscribers. |
 | `server/tasks/task_store.py` `TaskStore` | `Server\Tasks\TaskStore` (interface) | `save / get / list / delete`, each taking a `ServerCallContext`. |
 | `…/inmemory_task_store.py`, `copying_task_store.py` | `InMemoryTaskStore`, `CopyingTaskStore` | In-memory only lives as long as the PHP process: use it in tests and long-running servers, not under PHP-FPM. |
-| `…/database_task_store.py` (SQLAlchemy) | `Server\Tasks\PdoTaskStore` | core; plain PDO, supports pgsql/mysql/sqlite, same owner scoping, ordering and page tokens. The Laravel bridge adds `EloquentTaskStore` + migrations. |
+| `…/database_task_store.py` (SQLAlchemy) | `Server\Tasks\PdoTaskStore` | core; plain PDO, supports pgsql/mysql/sqlite, same owner scoping, ordering and page tokens. The Laravel bridge runs it on the app's connection and ships the migration. |
 | `…/task_manager.py`, `result_aggregator.py` | same | |
 | `…/task_updater.py` `TaskUpdater` | `Server\Tasks\TaskUpdater` | `updateStatus`, `addArtifact`, `complete`, `failed`, `reject`, `submit`, `startWork`, `cancel`, `requiresInput`, `requiresAuth`, `newAgentMessage`. |
 | `…/push_notification_config_store.py` + inmemory/database | `Server\Tasks\PushNotificationConfigStore` + `InMemoryPushNotificationConfigStore` | The PDO version and the sender arrive in phase 5. |
@@ -54,7 +54,7 @@ Reference: `a2aproject/a2a-python` @ `0d5473c` (2026-09-24). This is PyPI `a2a-s
 | `server/routes/jsonrpc_dispatcher.py`, `rest_dispatcher.py` | `Server\Routes\JsonRpcDispatcher`, `RestDispatcher` | **PSR-15 `RequestHandlerInterface`s.** Any framework can mount them. |
 | `server/routes/{jsonrpc,rest,agent_card}_routes.py` `create_*_routes()` | `Server\Routes\Routes::jsonRpc()`, `::rest()`, `::agentCard()`, `::router()` | PSR-15 handlers. `AgentCardHandler` adds the caching headers the spec recommends. `Router` combines all three for plain-PHP front controllers. |
 | — | `Server\Routes\ResponseEmitter`, `ServerRequestFactory`, `Sse\SseStream` | **PHP-only.** Emit responses from plain PHP (flushing SSE per event, noticing disconnects, running background work after the response); build the PSR-7 request from globals; a PSR-7 body that streams SSE from a generator. |
-| `server/routes/fastapi_routes.py` `add_a2a_routes_to_fastapi` | **Laravel bridge:** `Route::a2a(...)` macro | The framework glue lives in the bridge package, not in core. |
+| `server/routes/fastapi_routes.py` `add_a2a_routes_to_fastapi` | **Laravel bridge:** `Route::a2a(...)` macro (`A2A\Laravel\Routing\A2ARoutes`) | The framework glue lives in the bridge package, not in core. |
 | `server/routes/common.py` `ServerCallContextBuilder`, `DefaultServerCallContextBuilder` | same | Builds the context from the PSR-7 request: headers, `A2A-Extensions`, and the user your auth middleware stored in the `a2a.user` request attribute. |
 
 ### Client

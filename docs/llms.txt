@@ -1,13 +1,13 @@
 # A2A PHP SDK
 
-> PHP SDK for the A2A (Agent2Agent) protocol, version 1.0. Same classes and layout as the official Python SDK (a2aproject/a2a-python), with camelCase methods. Framework-agnostic core on PSR-7/15/17/18, plus a Laravel bridge. Package: praveendias1180/a2a-php (Composer). Status: early development (0.x); client and server are done, the server passes the official A2A TCK (MUST, SHOULD and MAY over JSON-RPC and HTTP+JSON) and interoperates with the official Python SDK both ways; the Laravel bridge is next.
+> PHP SDK for the A2A (Agent2Agent) protocol, version 1.0. Same classes and layout as the official Python SDK (a2aproject/a2a-python), with camelCase methods. Framework-agnostic core on PSR-7/15/17/18, plus a Laravel bridge. Package: praveendias1180/a2a-php (Composer). Status: early development (0.x); client and server are done, the server passes the official A2A TCK (MUST, SHOULD and MAY over JSON-RPC and HTTP+JSON) and interoperates with the official Python SDK both ways. Laravel bridge: praveendias1180/a2a-laravel (Route::a2a, queued execution on queue workers with live SSE, Redis Streams or database event log); a Laravel app on PHP-FPM + nginx with the queued runner also passes the TCK MUST level.
 
 Key facts:
 
 - Targets A2A specification 1.0 (types generated from a2aproject/A2A a2a.proto v1.0.0). A 0.3 compatibility layer is planned.
 - Requires PHP 8.2+. Install: `composer require praveendias1180/a2a-php`.
 - Class names match the Python SDK: AgentExecutor, RequestContext, EventQueue, TaskUpdater, TaskStore, DefaultRequestHandler, ClientFactory, A2ACardResolver.
-- PHP-FPM can't keep work running after a request: the executor runs in a PHP Fiber (events stream live), and tasks plus stream events live in a shared store (PdoTaskStore + PdoQueueManager on SQLite/PostgreSQL/MySQL) so separate PHP processes can subscribe and cancel. A queued runner with Redis comes with the Laravel bridge.
+- PHP-FPM can't keep work running after a request: the executor runs in a PHP Fiber (events stream live), and tasks plus stream events live in a shared store (PdoTaskStore + PdoQueueManager on SQLite/PostgreSQL/MySQL) so separate PHP processes can subscribe and cancel. The Laravel bridge adds QueuedTaskRunner (executors on queue workers) and RedisQueueManager (Redis Streams).
 - Not affiliated with the A2A Project or the Linux Foundation. Apache-2.0.
 
 ## Docs
@@ -19,6 +19,10 @@ Key facts:
 - [A2A in five minutes](https://praveendias1180.github.io/a2a-php/concepts/a2a-in-five-minutes/): objects, task lifecycle, operations
 - [Conformance](https://praveendias1180.github.io/a2a-php/reference/conformance/): official A2A TCK results
 - [Running agents in PHP](https://praveendias1180.github.io/a2a-php/concepts/running-agents-in-php/): task runners, queues, SSE behind nginx, cancellation
+- [Laravel: install and first agent](https://praveendias1180.github.io/a2a-php/guides/laravel/): Route::a2a, a2a:make-executor, auth and task owners, A2A::client
+- [Laravel: queued execution](https://praveendias1180.github.io/a2a-php/guides/laravel-queues/): QueuedTaskRunner, Horizon/supervisor, cancellation, Redis vs database events
+- [Laravel: streaming behind nginx](https://praveendias1180.github.io/a2a-php/guides/laravel-sse-nginx/)
+- [Laravel: storage and pruning](https://praveendias1180.github.io/a2a-php/guides/laravel-storage/)
 
 ## Reference
 

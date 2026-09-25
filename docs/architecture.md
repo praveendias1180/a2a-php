@@ -7,7 +7,7 @@ How the PHP SDK maps the Python SDK's design onto PHP, and where it has to diffe
 | Package | Depends on | Contains |
 |---|---|---|
 | **core** (`praveendias1180/a2a-php`) | `php ^8.2`, `google/protobuf`, `psr/http-message`, `psr/http-server-handler`, `psr/http-factory`, `psr/http-client`, `psr/log`, `psr/event-dispatcher`, `psr/clock` | Types, client, server, in-memory + PDO stores, JSON-RPC + REST dispatchers, SSE, push sender, signing, examples, TCK agent |
-| **laravel** (`praveendias1180/a2a-laravel`) | core, `illuminate/support ^11\|^12\|^13` | Service provider, `config/a2a.php`, `Route::a2a()` macro, Eloquent stores + migrations, queue-backed `TaskRunner`, Redis `QueueManager`, auth through guards, artisan commands, the `A2A` facade for the client |
+| **laravel** (`praveendias1180/a2a-laravel`) | core, `illuminate/* ^11\|^12\|^13` | Service provider, `config/a2a.php`, `Route::a2a()` macro, the core PDO stores on the app's connection + migration, encrypted push-config store, `QueuedTaskRunner` + `RunAgentExecutor` job, `RedisQueueManager`, owner scoping from the Laravel user, artisan commands, the `A2A` facade for the client |
 | **grpc** (later) | core, `grpc/grpc` | gRPC client transport. A gRPC server needs RoadRunner or Swoole. |
 
 **Why split:** Python uses pip extras. Composer's closest equivalent is `suggest`, but code that depends on a missing package still breaks. Keeping Laravel out of core means Symfony, Slim or plain-PHP users can use core. A Symfony bundle could then come from the community.
@@ -66,7 +66,7 @@ Implementations: `InMemoryQueueManager` (one process), `PdoQueueManager` (SQLite
 | Runner | Where | `SendMessage` (blocking) | `returnImmediately` | `SendStreamingMessage` | `SubscribeToTask` from another request | Cancel |
 |---|---|---|---|---|---|---|
 | **`InlineTaskRunner`** (core default, built) | same request, in a Fiber | runs the executor now, returns when it's final or paused | answers with the first event, finishes the work after the response (`fastcgi_finish_request()` under PHP-FPM) | each event is flushed as SSE while `execute()` runs | reads the task's event log from the `QueueManager` (`PdoQueueManager` across processes) | sets the cancel flag; the running request stops the executor at its next event; after 10 s the cancel request finishes the job itself |
-| **`QueuedTaskRunner`** (Laravel, phase 4) | a queue job on a Horizon/supervisor worker | request process waits on the Redis event stream until the task is final or paused (with a timeout) | sends a job, returns the `SUBMITTED` task at once | request process reads the Redis stream (`XREAD BLOCK`) and writes SSE | same as streaming | same flag; the job's executor sees it |
+| **`QueuedTaskRunner`** (Laravel bridge, built) | a `RunAgentExecutor` queue job on a worker (Horizon, supervisor) | dispatches the job, then reads the task's event log (Redis `XREAD BLOCK` or the database) until the task is final or paused | answers with the first event; the worker finishes the task | the web request relays each event as SSE as the worker writes it | same as the inline runner | same flag; the worker's executor sees it at its next event |
 | **Long-running** (later) | RoadRunner / Swoole / ReactPHP / amphp | true concurrency, like Python | same | same | same | same |
 
 **Rules the Python docstrings already state, which we keep:**
@@ -84,15 +84,15 @@ Implementations: `InMemoryQueueManager` (one process), `PdoQueueManager` (SQLite
 - `ResponseEmitter` turns off output buffering, sends `X-Accel-Buffering: no` and flushes each event.
 - Idle streams send a keep-alive comment every 15 s (`keepAliveSeconds`). `maxSubscribeIdleSeconds` optionally ends quiet subscriptions so abandoned connections can't pin workers.
 - Set nginx `fastcgi_buffering off` for the SSE location.
-- The Laravel bridge will use `response()->stream()` / `StreamedResponse`.
+- The Laravel bridge returns a `StreamedResponse` whose callback runs the same `ResponseEmitter::streamSse()`.
 
 ## 4. Storage
 
 | Store | Core | Laravel |
 |---|---|---|
-| `TaskStore` | `InMemoryTaskStore`, `PdoTaskStore` (one `{prefix}tasks` table: id, context_id, owner, status_state, status_timestamp (µs), protocol_version, task_json) | `EloquentTaskStore` on the app's connection + publishable migration |
-| `PushNotificationConfigStore` | InMemory (Pdo in phase 5) | Eloquent, **tokens stored encrypted** (`encrypted` cast) |
-| `QueueManager` | InMemory, `PdoQueueManager` (`{prefix}task_events`, `{prefix}task_flags`) | Redis Streams (`a2a:task:{id}`), with a TTL after the task goes final |
+| `TaskStore` | `InMemoryTaskStore`, `PdoTaskStore` (one `{prefix}tasks` table: id, context_id, owner, status_state, status_timestamp (µs), protocol_version, task_json) | the core `PdoTaskStore` on the app's connection (not an Eloquent reimplementation, so behaviour is identical to what the TCK checks); a publishable migration creates the table with the core's own DDL |
+| `PushNotificationConfigStore` | InMemory (Pdo in phase 5) | `DatabasePushNotificationConfigStore`: an Eloquent model, the whole config **encrypted** (`encrypted` cast) |
+| `QueueManager` | InMemory, `PdoQueueManager` (`{prefix}task_events`, `{prefix}task_flags`) | `RedisQueueManager`: Redis Streams (`a2a:events:{task}`, stream ids `0-{seq}`, a Lua script keeps sequence and XADD atomic), TTL after the task goes final; or the core `PdoQueueManager` on the app's connection |
 
 The Python `DatabaseTaskStore` columns (including the `owner` and `protocol_version` migrations) are the model for our schema, so both SDKs store the same thing. `PdoQueueManager::prune()` deletes old events; run it from a scheduled job.
 
@@ -111,37 +111,22 @@ The Python `DatabaseTaskStore` columns (including the `owner` and `protocol_vers
 - Push URLs pass `PushUrlValidator` (resolve DNS, then check every address against the private ranges, so DNS rebinding can't get round it) before we save or call them. Same for fetching `url` Parts.
 - Tasks are scoped to their owner in every store query. A task owned by someone else gives `TaskNotFoundError`, never "forbidden".
 - Card signing and checking: JWS + RFC 8785 JCS. The client verifies signatures when the card has them.
-- The Laravel bridge maps card `securitySchemes` to guards (`auth:sanctum`, a bearer token, or OAuth through Passport).
+- The Laravel bridge maps each security scheme the card requires to route middleware (`a2a.security_schemes`, e.g. `bearer => auth:sanctum`), and scopes tasks to the authenticated Laravel user.
 
-## 7. Laravel developer experience (target)
+## 7. Laravel developer experience (built in phase 4)
 
 ```php
 // routes/api.php
 Route::a2a('/a2a', agentCard: HelloAgentCard::class, executor: HelloExecutor::class)
     ->middleware('auth:sanctum');   // JSON-RPC at /a2a/jsonrpc, REST at /a2a/rest, card at /.well-known/agent-card.json
-
-// app/A2A/HelloExecutor.php  (php artisan a2a:make-executor Hello)
-final class HelloExecutor implements AgentExecutor {
-    public function execute(RequestContext $ctx, EventQueue $queue): void {
-        $u = new TaskUpdater($queue, $ctx->taskId(), $ctx->contextId());
-        $u->startWork();
-        $u->addArtifact([ProtoHelpers::textPart('Hello, '.$ctx->getUserInput())], name: 'response', lastChunk: true);
-        $u->complete();
-    }
-    public function cancel(RequestContext $ctx, EventQueue $queue): void {
-        (new TaskUpdater($queue, $ctx->taskId(), $ctx->contextId()))->cancel();
-    }
-}
-
-// Client side
-foreach (A2A::client('https://agent.example.com')->sendMessage(ProtoHelpers::userMessage('hi')) as $event) { ... }
 ```
 
-Artisan commands:
-- `a2a:make-executor`
-- `a2a:card` (prints and validates the card)
-- `a2a:tck` (starts the SUT agent for a local TCK run)
-- `a2a:prune` (deletes old final tasks)
+- **Routes carry strings only.** The macro stores the agent's definition (card class or array, executor class, runner, prefix) in the route defaults, so `route:cache` works and the controller rebuilds everything per request.
+- **The controller is a thin adapter.** It converts the Laravel request to PSR-7 (with the authenticated user as the `a2a.user` attribute) and hands it to the core PSR-15 handlers. All protocol behaviour stays in core.
+- **Queued runs.** `QueuedTaskRunner::run()` dispatches `RunAgentExecutor` and yields events from the `QueueManager`. The job holds the task's run lease while `execute()` runs, writes waiting/started/finished markers to a shared cache, and records an executor error so the web side re-throws it (same error as the inline runner). Not `ShouldBeUnique`: a follow-up message for the same task must wait, not be dropped.
+- **Commands:** `a2a:make-executor`, `a2a:card` (prints and validates the card), `a2a:prune` (deletes old finished tasks and events), `a2a:tck` (runs the official TCK against the app).
+
+The full guide: [Laravel](guides/laravel.md).
 
 ## 8. Tooling standards
 
