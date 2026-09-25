@@ -12,12 +12,8 @@
 composer require praveendias1180/a2a-php
 ```
 
-!!! note "Pre-release"
-    Until the first tagged release, install from `main`:
-
-    ```bash
-    composer require praveendias1180/a2a-php:dev-main
-    ```
+!!! note "Pre-1.0"
+    Versions are `0.x` until 1.0, so minor releases may still change the API. Pin a minor version (`^0.1`) and read the [changelog](../project/changelog.md) before upgrading.
 
 ### Faster protobuf (optional)
 

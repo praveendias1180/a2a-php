@@ -6,6 +6,10 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.1.0] - 2026-09-25
+
+First release: A2A 1.0 client and server for PHP 8.2+. The server passes the official A2A TCK at the MUST level (137 passed) over JSON-RPC and HTTP+JSON. The Laravel bridge is not included yet (phase 4).
+
 ### Added
 - Wire types generated from the A2A v1.0.0 `a2a.proto` (`A2A\Types\*`).
 - `A2A\Utils\Constants` and `A2A\Utils\TransportProtocol`.
@@ -78,3 +82,6 @@ All notable changes to this project are documented here. The format follows
 ### Changed
 - Requires `php-http/discovery` (finds a PSR-18 client when none is given) and
   `psr/http-factory` ^1.1.
+
+[Unreleased]: https://github.com/praveendias1180/a2a-php/compare/v0.1.0...HEAD
+[0.1.0]: https://github.com/praveendias1180/a2a-php/releases/tag/v0.1.0
