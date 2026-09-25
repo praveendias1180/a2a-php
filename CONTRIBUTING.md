@@ -2,7 +2,7 @@
 
 Thanks for helping. This SDK has one design rule above the others:
 
-**Keep the shape of the Python SDK.** Every public Python class has a PHP class with the same name in the same place. The mapping is in [`docs/python-sdk-mapping.md`](docs/python-sdk-mapping.md). If you add a public class, it should exist in the Python SDK, or the PR should explain why PHP needs it (e.g. the `TaskRunner` for PHP-FPM).
+**Keep the shape of the Python SDK.** Every public Python class has a PHP class with the same name in the same place. The mapping is in [Python → PHP mapping](https://praveendias1180.github.io/a2a-php/python-sdk-mapping/). If you add a public class, it should exist in the Python SDK, or the PR should explain why PHP needs it (e.g. the `TaskRunner` for PHP-FPM).
 
 ## Workflow
 

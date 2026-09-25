@@ -12,7 +12,7 @@ How the PHP SDK maps the Python SDK's design onto PHP, and where it has to diffe
 
 **Why split:** Python uses pip extras. Composer's closest equivalent is `suggest`, but code that depends on a missing package still breaks. Keeping Laravel out of core means Symfony, Slim or plain-PHP users can use core. A Symfony bundle could then come from the community.
 
-**Repo layout:** one repo, `praveendias1180/a2a-php`. The **core package is the repo root** (`src/`, `generated/`, `tests/`), because Packagist only reads a repo's root `composer.json`. The Laravel bridge lives in `packages/laravel` and is published to the read-only repo `praveendias1180/a2a-laravel` on every tag (`danharrin/monorepo-split-github-action`). One PR can change both, and they release together.
+**Repo layout:** one repo, `praveendias1180/a2a-php`. The **core package is the repo root** (`src/`, `generated/`, `tests/`), because Packagist only reads a repo's root `composer.json`. The Laravel bridge lives in `packages/laravel` and is mirrored to the read-only repo `praveendias1180/a2a-laravel` on every push to `main` and every tag, with `git subtree split` and an SSH deploy key that can write to that one repo only (`.github/workflows/split.yml`). One PR can change both, and they release together.
 
 ## 2. Types
 

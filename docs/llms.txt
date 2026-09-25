@@ -1,0 +1,33 @@
+# A2A PHP SDK
+
+> PHP SDK for the A2A (Agent2Agent) protocol, version 1.0. Same classes and layout as the official Python SDK (a2aproject/a2a-python), with camelCase methods. Framework-agnostic core on PSR-7/15/17/18, plus a Laravel bridge. Package: praveendias1180/a2a-php (Composer). Status: early development; wire types and utilities are done, the client and server are being built.
+
+Key facts:
+
+- Targets A2A specification 1.0 (types generated from a2aproject/A2A a2a.proto v1.0.0). A 0.3 compatibility layer is planned.
+- Requires PHP 8.2+. Install: `composer require praveendias1180/a2a-php`.
+- Class names match the Python SDK: AgentExecutor, RequestContext, EventQueue, TaskUpdater, TaskStore, DefaultRequestHandler, ClientFactory, A2ACardResolver.
+- PHP-FPM can't keep work running after a request, so execution goes through a TaskRunner: inline (core) or queued with Redis streaming (Laravel).
+- Not affiliated with the A2A Project or the Linux Foundation. Apache-2.0.
+
+## Docs
+
+- [Home](https://praveendias1180.github.io/a2a-php/): what it is, a side-by-side PHP / Laravel / Python example
+- [Install](https://praveendias1180.github.io/a2a-php/get-started/install/)
+- [Your first agent](https://praveendias1180.github.io/a2a-php/get-started/first-agent/): executor, Agent Card, serving it
+- [Call an agent](https://praveendias1180.github.io/a2a-php/get-started/call-an-agent/): the client and streaming
+- [A2A in five minutes](https://praveendias1180.github.io/a2a-php/concepts/a2a-in-five-minutes/): objects, task lifecycle, operations
+- [Running agents in PHP](https://praveendias1180.github.io/a2a-php/concepts/running-agents-in-php/): task runners, queues, SSE behind nginx, cancellation
+
+## Reference
+
+- [Python → PHP mapping](https://praveendias1180.github.io/a2a-php/python-sdk-mapping/): every Python SDK class and its PHP counterpart
+- [Architecture](https://praveendias1180.github.io/a2a-php/architecture/)
+- [Source code](https://github.com/praveendias1180/a2a-php)
+- [A2A specification](https://a2a-protocol.org/latest/specification/)
+
+## Optional
+
+- [Roadmap](https://praveendias1180.github.io/a2a-php/project/roadmap/)
+- [Changelog](https://praveendias1180.github.io/a2a-php/project/changelog/)
+- [Contributing](https://praveendias1180.github.io/a2a-php/project/contributing/)

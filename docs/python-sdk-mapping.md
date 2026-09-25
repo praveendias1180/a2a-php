@@ -15,7 +15,8 @@ Reference: `a2aproject/a2a-python` @ `0d5473c` (2026-09-24). This is PyPI `a2a-s
 | `utils/constants.py` | `Utils\Constants` | core | Well-known path, header names, default versions. |
 | `utils/errors.py` | `Utils\Errors\*Error` | core | One exception class per A2A error, each carrying its JSON-RPC code + gRPC status. |
 | `utils/error_handlers.py`, `grpc_status.py` | `Utils\ErrorHandlers` | core | Exception → JSON-RPC / REST / gRPC error body. |
-| `utils/proto_utils.py`, `json_utils.py` | `Utils\ProtoUtils` | core | ProtoJSON encode/decode, `Struct` ↔ PHP array. |
+| `utils/proto_utils.py` | `Utils\ProtoUtils` | core | ProtoJSON encode/decode, `Struct` ↔ PHP array. |
+| `utils/json_utils.py` | `Utils\JsonUtils` | core | A separate class, like Python. An empty PHP array means `[]`; use `new \stdClass()` for `{}`. |
 | `utils/task.py` | `Utils\TaskUtils` | core | `completedTask()`, apply `historyLength`, … |
 | `utils/_jcs.py`, `signing.py` | `Utils\Jcs`, `Utils\Signing` | core (+ `suggest: web-token/jwt-library`) | RFC 8785 canonicalization + card JWS. |
 | `utils/push_url_validator.py` | `Utils\PushUrlValidator` | core | SSRF guard: resolve DNS, reject private/loopback/link-local addresses. |
@@ -84,5 +85,6 @@ Reference: `a2aproject/a2a-python` @ `0d5473c` (2026-09-24). This is PyPI `a2a-s
 |---|---|---|
 | `asyncio` tasks, `async for` | PHP-FPM handles one request at a time; there is no event loop | `Generator`s for streams; a `TaskRunner` abstraction for background execution (see [architecture.md](architecture.md)) |
 | `asyncio.CancelledError` on cancel | A running PHP call can't be interrupted from outside | Cooperative: a `CancellationToken` in `RequestContext` that executors check (`$context->isCancelled()`), and the store's cancel flag across processes |
+| Empty `Struct` on the wire | The pure-PHP protobuf runtime writes an empty `Struct` (e.g. `metadata`) as `[]`, not `{}` | Known runtime quirk. Leave `metadata` unset rather than empty |
 | Pydantic models | — | `readonly` classes for SDK-side config objects; protobuf classes for wire types |
 | `httpx` | — | PSR-18 (Guzzle / Symfony HttpClient / Laravel's client, whichever the user has) |

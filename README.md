@@ -2,7 +2,11 @@
 
 A PHP implementation of the [A2A (Agent2Agent) protocol](https://a2a-protocol.org/latest/specification/), built in the **same shape as the official [Python SDK](https://github.com/a2aproject/a2a-python)**. If you know the Python SDK, you already know this one: the same classes in the same places, with `camelCase` methods.
 
-> **Status: early development (phase 1 of 7).** The wire types are generated and tested. The client and server are not written yet. Don't use it in production. See the [roadmap](#roadmap).
+**Targets A2A 1.0**, the current spec. Types are generated from the official `a2a.proto`, and from phase 3 conformance is checked in CI with the official A2A test kit (TCK). Works with any framework (PSR-7/15/17/18), with a Laravel bridge.
+
+📖 **Documentation: <https://praveendias1180.github.io/a2a-php/>**
+
+> **Status: early development (phase 2 of 7).** The wire types, errors, helpers and validators are done and tested. The client and server are not written yet. Don't use it in production. See the [roadmap](#roadmap).
 
 ## Packages
 
@@ -69,7 +73,7 @@ echo $task->serializeToJsonString();   // exact A2A v1.0 JSON
 | # | Phase | Done when |
 |---|---|---|
 | 0 | Skeleton, CI, generated types | ✅ |
-| 1 | Types + utilities (errors, helpers, validators) | spec JSON examples round-trip; Python utils tests ported |
+| 1 | Types + utilities (errors, helpers, validators) | ✅ |
 | 2 | Client (JSON-RPC + REST + SSE) | the full flow works against the official Python sample server |
 | 3 | Server core | the [A2A TCK](https://github.com/a2aproject/a2a-tck) passes at the MUST level |
 | 4 | Laravel bridge | the TCK passes against a Laravel app on php-fpm + nginx with queued execution |
@@ -77,7 +81,7 @@ echo $task->serializeToJsonString();   // exact A2A v1.0 JSON
 | 6 | v0.3 compatibility | a 0.3 client works against a 1.0 server |
 | 7 | 1.0.0 | stable release |
 
-Design notes: [`docs/architecture.md`](docs/architecture.md). The class-by-class mapping to the Python SDK: [`docs/python-sdk-mapping.md`](docs/python-sdk-mapping.md).
+Design notes: [Architecture](https://praveendias1180.github.io/a2a-php/architecture/). The class-by-class mapping to the Python SDK: [Python → PHP mapping](https://praveendias1180.github.io/a2a-php/python-sdk-mapping/).
 
 ## Development
 
@@ -87,6 +91,13 @@ composer test        # PHPUnit
 composer analyse     # PHPStan (level max)
 composer cs          # code style check
 composer generate    # regenerate generated/ from a2a.proto (needs Node for npx)
+```
+
+Docs site (in `docs/`, built with [Zensical](https://zensical.org)):
+
+```bash
+pip install zensical
+zensical serve       # http://127.0.0.1:8000/a2a-php/
 ```
 
 See [CONTRIBUTING.md](CONTRIBUTING.md).
