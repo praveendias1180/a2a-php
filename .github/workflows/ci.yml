@@ -41,6 +41,23 @@ jobs:
       - run: vendor/bin/phpstan analyse --no-progress
       - run: vendor/bin/php-cs-fixer fix --dry-run --diff
 
+  python-interop:
+    name: Interop with the Python SDK
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          coverage: none
+      - uses: ramsey/composer-install@v3
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install -r tests/Interop/python/requirements.txt
+      - name: PHP client against the Python sample server (JSON-RPC + HTTP+JSON)
+        run: scripts/run-python-interop.sh
+
   types-current:
     name: Generated types match a2a.proto
     runs-on: ubuntu-latest

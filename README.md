@@ -6,7 +6,7 @@ A PHP implementation of the [A2A (Agent2Agent) protocol](https://a2a-protocol.or
 
 📖 **Documentation: <https://praveendias1180.github.io/a2a-php/>**
 
-> **Status: early development (phase 2 of 7).** The wire types, errors, helpers and validators are done and tested. The client and server are not written yet. Don't use it in production. See the [roadmap](#roadmap).
+> **Status: early development (phase 3 of 7).** The wire types, utilities and the client are done, and the client is tested against the official Python SDK's sample agent. The server is not written yet. Don't use it in production. See the [roadmap](#roadmap).
 
 ## Packages
 
@@ -30,9 +30,29 @@ composer require praveendias1180/a2a-php
 
 Types are generated from the official [`a2a.proto`](https://github.com/a2aproject/A2A/blob/v1.0.0/specification/a2a.proto) (v1.0.0, the same pin as the Python SDK). JSON on the wire is standard ProtoJSON.
 
-## What it will look like
+## Call an agent (works today)
 
-A server agent, as in the Python SDK's hello-world sample:
+```php
+use A2A\Client\ClientFactory;
+use A2A\Helpers\ProtoHelpers;
+use A2A\Types\{Role, SendMessageRequest};
+
+$client = ClientFactory::createClient('https://agent.example.com'); // reads the Agent Card
+
+$request = new SendMessageRequest(['message' => ProtoHelpers::newTextMessage('hello', role: Role::ROLE_USER)]);
+
+foreach ($client->sendMessage($request) as $event) {   // streams (SSE) when the agent supports it
+    if ($event->hasArtifactUpdate()) {
+        echo ProtoHelpers::getArtifactText($event->getArtifactUpdate()->getArtifact()), PHP_EOL;
+    }
+}
+```
+
+JSON-RPC and HTTP+JSON, every A2A operation, tested in CI against the official Python SDK's sample agent. Works with Guzzle or Symfony HttpClient (live streaming) or any PSR-18 client. More in [Call an agent](https://praveendias1180.github.io/a2a-php/get-started/call-an-agent/).
+
+## Serve an agent (coming in phase 3)
+
+The server API, as in the Python SDK's hello-world sample:
 
 ```php
 use A2A\Server\AgentExecution\{AgentExecutor, RequestContext};
@@ -57,24 +77,13 @@ final class HelloExecutor implements AgentExecutor
 }
 ```
 
-The wire types work today:
-
-```php
-use A2A\Types\Task;
-
-$task = new Task();
-$task->mergeFromJsonString('{"id":"task-1","status":{"state":"TASK_STATE_COMPLETED"}}');
-echo $task->getStatus()->getState();   // 3 (TaskState::TASK_STATE_COMPLETED)
-echo $task->serializeToJsonString();   // exact A2A v1.0 JSON
-```
-
 ## Roadmap
 
 | # | Phase | Done when |
 |---|---|---|
 | 0 | Skeleton, CI, generated types | ✅ |
 | 1 | Types + utilities (errors, helpers, validators) | ✅ |
-| 2 | Client (JSON-RPC + REST + SSE) | the full flow works against the official Python sample server |
+| 2 | Client (JSON-RPC + REST + SSE) | ✅ |
 | 3 | Server core | the [A2A TCK](https://github.com/a2aproject/a2a-tck) passes at the MUST level |
 | 4 | Laravel bridge | the TCK passes against a Laravel app on php-fpm + nginx with queued execution |
 | 5 | Push notifications, card signing, PDO stores, extensions | the TCK passes at the SHOULD level |

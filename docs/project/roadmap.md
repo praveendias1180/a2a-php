@@ -5,8 +5,8 @@ Each phase ends with a check that proves it's done. Versions stay at `0.x` until
 | # | Phase | Done when |
 |---|---|---|
 | 0 | **Skeleton**: CI, generated types | ✅ |
-| 1 | **Types + utilities**: errors, helpers, validators | the spec's JSON examples round-trip; the Python utility tests are ported |
-| 2 | **Client**: JSON-RPC + REST + SSE | the full flow works against the official Python sample server |
+| 1 | **Types + utilities**: errors, helpers, validators | ✅ |
+| 2 | **Client**: JSON-RPC + REST + SSE | ✅ tested in CI against the official Python sample server |
 | 3 | **Server core** + inline runner | the [A2A TCK](https://github.com/a2aproject/a2a-tck) passes at the MUST level |
 | 4 | **Laravel bridge** + queued runner | the TCK passes against a Laravel app on php-fpm + nginx |
 | 5 | **Push notifications, card signing, PDO stores, extensions** | the TCK passes at the SHOULD level |

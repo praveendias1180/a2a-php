@@ -29,3 +29,23 @@ All notable changes to this project are documented here. The format follows
   vector corpus and against ECMAScript number formatting.
 - `A2A\Helpers\ProtoHelpers` and `AgentCardHelpers`, `A2A\Extensions\Common`,
   `A2A\Auth\User` and `UnauthenticatedUser`.
+- The client (`A2A\Client\*`), in the shape of the Python SDK's `a2a.client`:
+  `ClientFactory` (with `createClient()` and `minimalAgentCard()`), `BaseClient`,
+  `ClientConfig`, `ClientCallContext`, `A2ACardResolver` (including the pre-1.0 card
+  field mapping), interceptors (`ClientCallInterceptor`, `BeforeArgs`, `AfterArgs`),
+  `AuthInterceptor` with `InMemoryContextCredentialStore`, service parameters, and the
+  client errors (`A2AClientError`, `A2AClientTimeoutError`, `AgentCardResolutionError`).
+- JSON-RPC and HTTP+JSON transports (`JsonRpcTransport`, `RestTransport`,
+  `TenantTransportDecorator`) with every A2A operation. Errors from the agent come back
+  as the matching `A2A\Utils\Errors\*` exception. Streams are PHP Generators.
+- `A2A\Client\Http\HttpSender` with senders for Guzzle and Symfony HttpClient (live
+  SSE streaming) and any PSR-18 client (buffered), picked by `HttpSenderFactory`; an
+  incremental SSE parser (`A2A\Client\Sse\EventStreamParser`).
+- Interop tests against the official Python SDK's sample agent (a2a-sdk 1.1.5): every
+  client operation over JSON-RPC and HTTP+JSON, with Guzzle, Symfony HttpClient and a
+  PSR-18 client (`scripts/run-python-interop.sh`, CI job `python-interop`).
+- `examples/call-an-agent.php`, shown on the docs site and run in CI.
+
+### Changed
+- Requires `php-http/discovery` (finds a PSR-18 client when none is given) and
+  `psr/http-factory` ^1.1.

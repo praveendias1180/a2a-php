@@ -76,7 +76,7 @@ The Python `DatabaseTaskStore` columns (including the `owner` and `protocol_vers
   2. Builds `ServerCallContext` through the builder, which gets the auth user.
   3. Calls `RequestHandler`.
   4. Turns exceptions into spec error bodies.
-- **Client:** any PSR-18 client. Streaming needs the raw response body stream, so we detect Guzzle / Symfony HttpClient and use their streaming mode. We ship `EventStreamParser` for SSE.
+- **Client (built in phase 2):** sending goes through `Client\Http\HttpSender`, because PSR-18 hands back complete responses and so can't stream SSE. `HttpSenderFactory` wraps what you have: Guzzle and Symfony HttpClient stream live, any other PSR-18 client works with buffered streams, and with nothing given it picks Guzzle, then Symfony, then any PSR-18 client php-http/discovery finds. Guzzle's streaming requests go out as HTTP/1.0, because PHP's `http://` wrapper, which Guzzle streams through, holds a chunked HTTP/1.1 body back until it ends. `Sse\EventStreamParser` reads SSE incrementally, handling lines and CRLF pairs split across chunks.
 - **gRPC:** later, in its own package.
 
 ## 6. Security built in (not left to users)

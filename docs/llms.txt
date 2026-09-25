@@ -1,6 +1,6 @@
 # A2A PHP SDK
 
-> PHP SDK for the A2A (Agent2Agent) protocol, version 1.0. Same classes and layout as the official Python SDK (a2aproject/a2a-python), with camelCase methods. Framework-agnostic core on PSR-7/15/17/18, plus a Laravel bridge. Package: praveendias1180/a2a-php (Composer). Status: early development; wire types and utilities are done, the client and server are being built.
+> PHP SDK for the A2A (Agent2Agent) protocol, version 1.0. Same classes and layout as the official Python SDK (a2aproject/a2a-python), with camelCase methods. Framework-agnostic core on PSR-7/15/17/18, plus a Laravel bridge. Package: praveendias1180/a2a-php (Composer). Status: early development; wire types, utilities and the client are done (tested against the official Python SDK's sample agent), the server is being built.
 
 Key facts:
 

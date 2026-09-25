@@ -10,7 +10,7 @@ Build and call **[A2A](https://a2a-protocol.org/latest/specification/) agents in
 **Targets A2A 1.0**, the current version of the spec.
 
 !!! warning "Early development"
-    The wire types are generated and tested. The client and server are being built. **Don't use this in production yet.** Progress is on the [roadmap](project/roadmap.md).
+    The wire types, utilities and client are done; the client is tested against the official Python SDK's sample agent. The server is being built. **Don't use this in production yet.** Progress is on the [roadmap](project/roadmap.md).
 
 <div class="grid cards" markdown>
 

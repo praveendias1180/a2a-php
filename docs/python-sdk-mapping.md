@@ -56,17 +56,24 @@ Reference: `a2aproject/a2a-python` @ `0d5473c` (2026-09-24). This is PyPI `a2a-s
 
 ### Client
 
-| Python | PHP | Notes |
+Built in phase 2. Namespace `A2A\Client`.
+
+| Python (`src/a2a/client/…`) | PHP | Notes |
 |---|---|---|
-| `client/client.py` `Client`, `ClientConfig`, `ClientCallContext` | same | `sendMessage()` returns a **Generator** of `StreamResponse`, the same shape as Python's async iterator. |
-| `client/base_client.py` `BaseClient` | same | |
-| `client/client_factory.py` `ClientFactory`, `create_client`, `minimal_agent_card` | `ClientFactory`, `ClientFactory::create()`, `ClientFactory::minimalAgentCard()` | Picks the transport from the card's `supportedInterfaces` + our preferences. |
-| `client/card_resolver.py` `A2ACardResolver` | same | Fetches `/.well-known/agent-card.json` and optionally checks the signature. |
-| `client/transports/{base,jsonrpc,rest,grpc}.py` | `Client\Transports\{ClientTransport,JsonRpcTransport,RestTransport,GrpcTransport}` | PSR-18 client + PSR-17 factories. SSE is read by our own `Client\Sse\EventStreamParser`. |
-| `client/transports/tenant_decorator.py` | same | |
-| `client/interceptors.py`, `client/auth/*` | `ClientCallInterceptor`, `AuthInterceptor`, `CredentialService`, `InMemoryContextCredentialStore` | |
-| `client/errors.py` | `A2AClientError`, `A2AClientTimeoutError`, `AgentCardResolutionError` | |
-| `client/service_parameters.py` | same | Sets `A2A-Version` / `A2A-Extensions`. |
+| `client.py` `Client`, `ClientConfig`, `ClientCallContext` | `Client` (abstract), `ClientConfig`, `ClientCallContext` | `sendMessage()` / `subscribe()` return a **Generator** of `StreamResponse`, PHP's answer to Python's async iterator. `ClientConfig::$httpClient` replaces `httpx_client` and takes Guzzle, Symfony HttpClient, any PSR-18 client or an `HttpSender`. No `grpc_channel_factory` yet. |
+| `base_client.py` `BaseClient` | `BaseClient` | Same config handling and interceptor semantics; `agentCard()` exposes the current card. |
+| `client_factory.py` `ClientFactory`, `create_client()`, `minimal_agent_card()` | `ClientFactory`, **`ClientFactory::createClient()`**, `ClientFactory::minimalAgentCard()` | PHP can't have a static and an instance method both named `create()`, so Python's module-level `create_client()` is the static `createClient()`. Instance `create()` / `createFromUrl()` / `register()` as in Python. A card that only offers A2A 0.3 raises `A2AClientError` until the 0.3 layer lands. |
+| `card_resolver.py` `A2ACardResolver`, `parse_agent_card()` | `A2ACardResolver`, `A2ACardResolver::parseAgentCard()` | Includes the pre-1.0 card field mapping. `http_kwargs` → `['headers' => [...], 'timeout' => ...]`. |
+| `interceptors.py` `ClientCallInterceptor`, `BeforeArgs`, `AfterArgs` | same names | Interface instead of ABC; methods are synchronous. |
+| `auth/credentials.py`, `auth/interceptor.py` | `Auth\CredentialService` (interface), `Auth\InMemoryContextCredentialStore`, `Auth\AuthInterceptor` | |
+| `errors.py` | `Errors\A2AClientError`, `Errors\A2AClientTimeoutError`, `Errors\AgentCardResolutionError` | All extend `A2A\Utils\Errors\A2AError`, as in Python. |
+| `service_parameters.py` `ServiceParametersFactory`, `with_a2a_extensions()` | `ServiceParametersFactory`, `ServiceParameters::withA2aExtensions()` | Updates return the new array (PHP arrays are values) instead of mutating a dict. |
+| `transports/base.py` `ClientTransport` | `Transports\ClientTransport` (interface) | |
+| `transports/jsonrpc.py`, `transports/rest.py` | `Transports\JsonRpcTransport`, `Transports\RestTransport` | Take an `HttpSender` where Python takes an `httpx.AsyncClient`. Every request carries `A2A-Version: 1.0` (Python sets it on the factory's shared client). |
+| `transports/tenant_decorator.py` `TenantTransportDecorator` | `Transports\TenantTransportDecorator` | |
+| `transports/http_helpers.py` | `Transports\HttpHelpers` (internal) + `Sse\EventStreamParser` | The SSE parser is incremental (bytes arrive in arbitrary chunks); same rules as Python's `parse_sse_stream()`. |
+| `transports/grpc.py` | — | After 1.0. |
+| (httpx) | `Http\HttpSender` + `Psr18HttpSender`, `GuzzleHttpSender`, `SymfonyHttpSender`, `HttpSenderFactory` | PHP-only: PSR-18 can't stream, so sending goes through this small interface. Guzzle and Symfony stream live; other PSR-18 clients get the buffered body. Guzzle stream requests go out as HTTP/1.0 (PHP's `http://` wrapper holds chunked HTTP/1.1 bodies back until they end). |
 
 ### Compat, tooling, tests
 
@@ -87,4 +94,4 @@ Reference: `a2aproject/a2a-python` @ `0d5473c` (2026-09-24). This is PyPI `a2a-s
 | `asyncio.CancelledError` on cancel | A running PHP call can't be interrupted from outside | Cooperative: a `CancellationToken` in `RequestContext` that executors check (`$context->isCancelled()`), and the store's cancel flag across processes |
 | Empty `Struct` on the wire | The pure-PHP protobuf runtime writes an empty `Struct` (e.g. `metadata`) as `[]`, not `{}` | Known runtime quirk. Leave `metadata` unset rather than empty |
 | Pydantic models | — | `readonly` classes for SDK-side config objects; protobuf classes for wire types |
-| `httpx` | — | PSR-18 (Guzzle / Symfony HttpClient / Laravel's client, whichever the user has) |
+| `httpx` | PSR-18 can only return complete responses, so it can't stream SSE | `Client\Http\HttpSender`: Guzzle and Symfony HttpClient stream live; any other PSR-18 client works with buffered streams |
