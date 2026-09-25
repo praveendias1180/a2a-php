@@ -48,7 +48,10 @@
         }
     },
     "scripts": {
-        "generate": "npx --yes @bufbuild/buf generate",
+        "generate": [
+            "npx --yes @bufbuild/buf generate",
+            "@php scripts/generate-required-fields.php"
+        ],
         "test": "phpunit",
         "analyse": "phpstan analyse",
         "cs": "php-cs-fixer fix --dry-run --diff",

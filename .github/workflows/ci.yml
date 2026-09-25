@@ -49,7 +49,12 @@ jobs:
       - uses: bufbuild/buf-action@v1
         with:
           setup_only: true
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          coverage: none
       - run: buf generate
+      - run: php scripts/generate-required-fields.php
       - name: Fail if src differs from a fresh generation
         run: |
           git status --porcelain generated

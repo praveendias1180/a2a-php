@@ -9,3 +9,7 @@ This product includes software developed as part of the A2A Project
 
   - The public API is modelled on the A2A Python SDK,
     https://github.com/a2aproject/a2a-python.
+
+  - tests/Utils/Fixtures/jcs_vectors.json is copied from the A2A Python SDK,
+    which took it from the a2a-jcs-v01 RFC 8785 corpus
+    (https://github.com/a2aproject/a2a-tck/pull/228).
