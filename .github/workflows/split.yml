@@ -1,31 +1,47 @@
-# On every tag, publishes packages/laravel to the read-only repo
-# praveendias1180/a2a-laravel (Packagist only reads a repo's root composer.json).
-# The core package is this repo's root, so it needs no split.
-# Needs a SPLIT_TOKEN secret: a fine-grained PAT with contents:write on a2a-laravel.
+# Mirrors packages/laravel to the read-only repo praveendias1180/a2a-laravel
+# (Packagist only reads a repo's root composer.json). The core package is this
+# repo's root, so it needs no split.
+#
+# Auth: an SSH deploy key with write access on a2a-laravel ONLY. Its private
+# half is the LARAVEL_SPLIT_DEPLOY_KEY secret here. No personal token involved.
 name: Split packages
 
 on:
   push:
+    branches: [main]
     tags: ['v*']
 
+concurrency:
+  group: split
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
 jobs:
-  split:
+  laravel:
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        package:
-          - { dir: packages/laravel, repo: a2a-laravel }
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - uses: danharrin/monorepo-split-github-action@v2.3.0
+
+      - name: Split packages/laravel history
+        run: git subtree split --prefix=packages/laravel -b laravel-split
+
+      - name: Push to praveendias1180/a2a-laravel
         env:
-          GITHUB_TOKEN: ${{ secrets.SPLIT_TOKEN }}
-        with:
-          package_directory: ${{ matrix.package.dir }}
-          repository_organization: praveendias1180
-          repository_name: ${{ matrix.package.repo }}
-          tag: ${{ github.ref_name }}
-          user_name: github-actions[bot]
-          user_email: github-actions[bot]@users.noreply.github.com
+          DEPLOY_KEY: ${{ secrets.LARAVEL_SPLIT_DEPLOY_KEY }}
+        run: |
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$DEPLOY_KEY" > ~/.ssh/split_key
+          chmod 600 ~/.ssh/split_key
+          ssh-keyscan -t ed25519 github.com >> ~/.ssh/known_hosts 2>/dev/null
+          export GIT_SSH_COMMAND="ssh -i ~/.ssh/split_key -o IdentitiesOnly=yes"
+          remote=git@github.com:praveendias1180/a2a-laravel.git
+
+          if [[ "$GITHUB_REF" == refs/tags/* ]]; then
+            git push "$remote" "laravel-split:refs/tags/${GITHUB_REF_NAME}"
+          else
+            git push "$remote" laravel-split:refs/heads/main
+          fi
