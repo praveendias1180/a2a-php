@@ -6,6 +6,10 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-09-26
+
+Phases 5 and 6: push notifications, Agent Card signing and extensions, and A2A 0.3 compatibility (server and client). The TCK MUST level now passes 161 distinct tests (was 137), in plain PHP and on a queued Laravel app. Both packages are released as 0.3.0; `a2a-laravel` requires `a2a-php` `^0.3`.
+
 ### Added
 - **A2A 0.3 compatibility** (`A2A\Compat\V0_3`, a port of Python's `a2a.compat.v0_3`).
   - **Client:** `ClientFactory` uses `CompatJsonRpcTransport` / `CompatRestTransport` for a v0.3 interface, so a 0.3 agent is called with the usual v1.0 types. Cards that only offer 0.3 no longer raise.
@@ -129,6 +133,7 @@ First release: A2A 1.0 client and server for PHP 8.2+. The server passes the off
 - Requires `php-http/discovery` (finds a PSR-18 client when none is given) and
   `psr/http-factory` ^1.1.
 
-[Unreleased]: https://github.com/praveendias1180/a2a-php/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/praveendias1180/a2a-php/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/praveendias1180/a2a-php/releases/tag/v0.3.0
 [0.2.0]: https://github.com/praveendias1180/a2a-php/releases/tag/v0.2.0
 [0.1.0]: https://github.com/praveendias1180/a2a-php/releases/tag/v0.1.0

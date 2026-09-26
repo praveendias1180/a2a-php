@@ -112,14 +112,18 @@ if [ ! -f "$app/artisan" ]; then
     echo "Creating the Laravel app in $app ..."
     composer create-project laravel/laravel "$app" --no-interaction --prefer-dist --quiet
 fi
+# Version the local path packages report: one above the newest release, so it
+# satisfies packages/laravel's "^X.Y" requirement on the core.
+local_version="$(sed -n 's/.*"praveendias1180\/a2a-php": "\^\([0-9]*\.[0-9]*\)".*/\1/p' "$repo/packages/laravel/composer.json").99"
+
 (
     cd "$app"
-    composer config repositories.a2a-core "{\"type\":\"path\",\"url\":\"$repo\",\"options\":{\"symlink\":true,\"versions\":{\"praveendias1180/a2a-php\":\"0.2.99\"}}}"
-    composer config repositories.a2a-laravel "{\"type\":\"path\",\"url\":\"$repo/packages/laravel\",\"options\":{\"symlink\":true,\"versions\":{\"praveendias1180/a2a-laravel\":\"0.2.99\"}}}"
+    composer config repositories.a2a-core "{\"type\":\"path\",\"url\":\"$repo\",\"options\":{\"symlink\":true,\"versions\":{\"praveendias1180/a2a-php\":\"$local_version\"}}}"
+    composer config repositories.a2a-laravel "{\"type\":\"path\",\"url\":\"$repo/packages/laravel\",\"options\":{\"symlink\":true,\"versions\":{\"praveendias1180/a2a-laravel\":\"$local_version\"}}}"
     # Check the installed package, not composer.json: the repositories block
     # above already mentions the package name, so a grep would always match.
     if [ ! -e vendor/praveendias1180/a2a-laravel/composer.json ]; then
-        composer require --no-interaction --quiet "praveendias1180/a2a-laravel:0.2.99" "praveendias1180/a2a-php:0.2.99"
+        composer require --no-interaction --quiet "praveendias1180/a2a-laravel:$local_version" "praveendias1180/a2a-php:$local_version"
     fi
     # A reused app keeps the package metadata (and so the autoload map) from when
     # the path packages were installed; refresh it so namespaces added to the
