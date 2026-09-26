@@ -36,6 +36,8 @@ use Psr\Log\NullLogger;
  * Mirrors a2a-python: EventConsumer in
  * src/a2a/server/agent_execution/active_task.py (driven synchronously
  * instead of as an asyncio task).
+ *
+ * @internal Not covered by the 1.x backward-compatibility promise; may change in any release.
  */
 final class EventConsumer
 {

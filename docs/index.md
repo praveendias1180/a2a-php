@@ -9,8 +9,8 @@ Build and call **[A2A](https://a2a-protocol.org/latest/specification/) agents in
 
 **Targets A2A 1.0**, the current version of the spec.
 
-!!! warning "Early development"
-    The client, the server, the Laravel bridge, push notifications, Agent Card signing, extensions and [A2A 0.3 compatibility](guides/a2a-0-3.md) are done. The server passes the official A2A test kit ([Conformance](reference/conformance.md)), and the SDK talks to the official Python SDK in both directions. 1.0 is next, and the API may still change before then. Progress is on the [roadmap](project/roadmap.md).
+!!! success "Stable: 1.x"
+    The client, the server, the Laravel bridge, push notifications, Agent Card signing, extensions and [A2A 0.3 compatibility](guides/a2a-0-3.md) are done. The server passes the official A2A test kit ([Conformance](reference/conformance.md)), and the SDK talks to the official Python SDK in both directions. The public API follows [SemVer](reference/backward-compatibility.md); coming from 0.x, see [Upgrading](guides/upgrading.md).
 
 <div class="grid cards" markdown>
 

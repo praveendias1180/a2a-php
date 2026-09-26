@@ -26,6 +26,7 @@ nav = [
     { "Signing the Agent Card" = "guides/card-signing.md" },
     { "Extensions" = "guides/extensions.md" },
     { "A2A 0.3 agents and clients" = "guides/a2a-0-3.md" },
+    { "Upgrading" = "guides/upgrading.md" },
   ] },
   { "Concepts" = [
     { "A2A in five minutes" = "concepts/a2a-in-five-minutes.md" },
@@ -34,7 +35,10 @@ nav = [
   { "Reference" = [
     { "Python → PHP mapping" = "python-sdk-mapping.md" },
     { "Architecture" = "architecture.md" },
+    { "API reference" = "reference/api.md" },
     { "Conformance" = "reference/conformance.md" },
+    { "Backward compatibility" = "reference/backward-compatibility.md" },
+    { "Performance" = "reference/performance.md" },
   ] },
   { "Project" = [
     { "Roadmap" = "project/roadmap.md" },

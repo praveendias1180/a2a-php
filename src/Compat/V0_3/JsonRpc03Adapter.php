@@ -33,6 +33,8 @@ use Psr\Log\NullLogger;
  * Differences: A2A errors keep their own JSON-RPC code (-32001 task not
  * found, ...) where Python answers every A2AError with -32603 and its
  * message, and internal errors return a generic message (logged here).
+ *
+ * @internal Not covered by the 1.x backward-compatibility promise; may change in any release.
  */
 final class JsonRpc03Adapter
 {

@@ -20,6 +20,8 @@ use Psr\Http\Message\StreamFactoryInterface;
  *  - any other PSR-18 client (SSE arrives buffered, see Psr18HttpSender)
  *  - nothing: Guzzle if installed, else Symfony HttpClient if installed,
  *    else whatever PSR-18 client php-http/discovery finds.
+ *
+ * @internal Not covered by the 1.x backward-compatibility promise; may change in any release.
  */
 final class HttpSenderFactory
 {

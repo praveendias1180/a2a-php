@@ -16,6 +16,8 @@ use Google\Protobuf\Struct;
  * the types the REST binding carries. Unlike Python, an unset status
  * message stays unset (Python builds an empty Message) and the status
  * timestamp is kept.
+ *
+ * @internal Not covered by the 1.x backward-compatibility promise; may change in any release.
  */
 final class FromProto
 {

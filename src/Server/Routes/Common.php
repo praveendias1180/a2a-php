@@ -12,6 +12,8 @@ use Google\Protobuf\Internal\Message as ProtobufMessage;
  *
  * Mirrors a2a-python: serialize_list_tasks_response() in
  * src/a2a/server/routes/common.py.
+ *
+ * @internal Not covered by the 1.x backward-compatibility promise; may change in any release.
  */
 final class Common
 {

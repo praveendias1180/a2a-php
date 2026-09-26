@@ -1,37 +1,105 @@
-# Builds the documentation site on every PR (to catch broken includes) and
-# deploys it to GitHub Pages on pushes to main.
+# The documentation site (Zensical) plus the API reference (phpDocumentor, under /api/).
+#
+# The published site documents the NEWEST RELEASE, not main, so it never shows
+# features `composer require` can't install yet. The workflow itself runs from
+# main (the github-pages environment only accepts the default branch) and
+# checks out the newest v* tag to build. Pull requests build their own head to
+# catch errors. Run it by hand with a `ref` to publish something else, e.g.
+# `main` for an urgent docs fix.
+#
+# Not versioned on purpose: see docs/reference/backward-compatibility.md
+# ("Documentation versions").
 name: Docs
 
 on:
   push:
     branches: [main]
+    tags: ['v*']
   pull_request:
   workflow_dispatch:
+    inputs:
+      ref:
+        description: 'Ref to build: "latest-release" (default), a tag, a branch or a commit'
+        default: latest-release
+        required: false
 
 permissions:
   contents: read
 
 concurrency:
-  group: docs-${{ github.ref }}
+  group: docs-${{ github.event_name == 'pull_request' && github.ref || 'publish' }}
   cancel-in-progress: true
 
+env:
+  PHPDOC_VERSION: v3.10.0
+  PHPDOC_SHA256: fe1e7c23ba3329aa6f19ac3c807446159a431a195ec5d9163b0c281a15105207
+
 jobs:
+  # A new release tag: re-run this workflow on main (tag runs can't deploy to
+  # github-pages), which then builds that tag. GITHUB_TOKEN may trigger
+  # workflow_dispatch.
+  redeploy-for-tag:
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    permissions:
+      actions: write
+    steps:
+      - env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run docs.yml --repo "${{ github.repository }}" --ref main
+
   build:
+    if: ${{ !startsWith(github.ref, 'refs/tags/') }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Pick the ref to build
+        id: ref
+        env:
+          INPUT_REF: ${{ inputs.ref }}
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            ref="${{ github.sha }}"
+          elif [ -n "$INPUT_REF" ] && [ "$INPUT_REF" != "latest-release" ]; then
+            ref="$INPUT_REF"
+          else
+            ref="$(git tag --list 'v*' --sort=-v:refname | grep -Ev -- '-(alpha|beta|rc)' | head -n1)"
+            ref="${ref:-${{ github.sha }}}"
+          fi
+          echo "Building docs from: $ref"
+          git checkout --quiet "$ref"
+          echo "ref=$ref" >> "$GITHUB_OUTPUT"
+
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
       - run: pip install zensical==0.0.65
       - run: zensical build --clean --strict
+
+      - uses: shivammathur/setup-php@v2
+        if: hashFiles('phpdoc.dist.xml') != ''
+        with:
+          php-version: '8.4'
+          coverage: none
+      - name: API reference (phpDocumentor) into site/api
+        if: hashFiles('phpdoc.dist.xml') != ''
+        run: |
+          curl -sSfL -o /tmp/phpDocumentor.phar \
+            "https://github.com/phpDocumentor/phpDocumentor/releases/download/${PHPDOC_VERSION}/phpDocumentor.phar"
+          echo "${PHPDOC_SHA256}  /tmp/phpDocumentor.phar" | sha256sum --check
+          php -d memory_limit=2G /tmp/phpDocumentor.phar run -c phpdoc.dist.xml --no-interaction
+          test -f site/api/index.html
+
       - uses: actions/upload-pages-artifact@v3
         if: github.event_name != 'pull_request'
         with:
           path: site
 
   deploy:
-    if: github.event_name != 'pull_request'
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
     needs: build
     runs-on: ubuntu-latest
     permissions:

@@ -21,6 +21,8 @@ use Psr\Log\NullLogger;
  * live ActiveTask per task in its long-running process; a PHP process
  * usually serves one request, so this builds a fresh ActiveTask each time
  * and the QueueManager carries what must be shared between processes.
+ *
+ * @internal Not covered by the 1.x backward-compatibility promise; may change in any release.
  */
 final class ActiveTaskRegistry
 {

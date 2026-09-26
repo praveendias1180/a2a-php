@@ -55,6 +55,8 @@ use Google\Protobuf\Internal\Message as ProtobufMessage;
  * v0.3 proto's routes (Python raises NotImplementedError for those).
  * Errors: a `type` name (Python's format), a v1.0 ErrorInfo detail, or the
  * HTTP status (404 → MethodNotFoundError, as in Python).
+ *
+ * @internal Not covered by the 1.x backward-compatibility promise; may change in any release.
  */
 final class CompatRestTransport implements ClientTransport
 {

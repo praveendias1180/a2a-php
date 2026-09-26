@@ -15,6 +15,8 @@ use A2A\Utils\Errors\VersionNotSupportedError;
  * Mirrors a2a-python: agent_card_to_dict() in
  * src/a2a/server/request_handlers/response_helpers.py (the JSON-RPC
  * builders it also holds live in Utils\ErrorHandlers here).
+ *
+ * @internal Not covered by the 1.x backward-compatibility promise; may change in any release.
  */
 final class ResponseHelpers
 {

@@ -6,6 +6,25 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+## [1.0.0] - 2026-09-26
+
+The stable release. No API changes since 0.3.0 beyond marking implementation details `@internal`; from here the public API follows [Semantic Versioning](https://praveendias1180.github.io/a2a-php/reference/backward-compatibility/). Both packages are released as 1.0.0; `a2a-laravel` requires `a2a-php` `^1.0`. Upgrading from 0.x: see the [upgrade guide](https://praveendias1180.github.io/a2a-php/guides/upgrading/).
+
+### Added
+- **Backward-compatibility policy** (`docs/reference/backward-compatibility.md`): what 1.x covers (public classes, interfaces you implement, exceptions, Laravel config and routes, PDO schema, wire behaviour, supported PHP/Laravel versions) and what it doesn't (`@internal`, generated-code layout, the spec itself).
+- **API reference** generated with phpDocumentor (`phpdoc.dist.xml`) and published under `/api/` on the docs site. `@internal` classes are left out.
+- **Upgrade guide** (`docs/guides/upgrading.md`): 0.1 → 0.2 → 0.3 → 1.0, and the policy from here.
+- **Benchmarks**: `scripts/benchmark.php` (ProtoJSON, SSE parsing, full JSON-RPC requests) with results on `docs/reference/performance.md`, and a manual `benchmark.yml` workflow that compares the pure-PHP and `ext-protobuf` runtimes.
+- **Upstream watch**: `scripts/upstream-watch.py` and a weekly `upstream-watch.yml` workflow that keep one GitHub issue listing new upstream commits (Python SDK, `a2a.proto`, TCK requirements) since the pins in `UPSTREAM.md`.
+- **Docs sample test** (`tests/Docs/DocsCodeSamplesTest.php`): every inline PHP sample in `docs/` must parse, and every A2A class and static method it names must exist.
+
+### Changed
+- Marked `@internal` (not covered by the 1.x promise, left out of the API reference): `Client\Http\HttpSenderFactory`, `Client\Sse\EventStreamParser`, `Client\Sse\SseEvent`, `Server\AgentExecution\ActiveTaskRegistry`, `Server\AgentExecution\EventConsumer`, `Server\RequestHandlers\ResponseHelpers`, `Server\Routes\Common`, `Utils\Jcs`, every class in `Compat\V0_3` (conversions, adapters, 0.3 handlers and transports), and in the Laravel bridge `Routing\A2ARoutes`, `Auth\LaravelUser`, `Auth\SerializedUser` and the four console command classes. These were already implementation details (plus the 11 classes that were already `@internal`); the public route to each is in the upgrade guide.
+- The docs site is built from the newest `v*` release tag instead of `main`, so it never documents unreleased features (the workflow still runs from `main`; a tag push re-runs it).
+- `praveendias1180/a2a-laravel` requires `praveendias1180/a2a-php` `^1.0`.
+- README and docs describe the 1.x status; badges for CI, the TCK result, Packagist version, PHP version and license.
+- `docs/guides/a2a-0-3.md`: the 0.3 server example is now a complete, valid snippet.
+
 ## [0.3.0] - 2026-09-26
 
 Phases 5 and 6: push notifications, Agent Card signing and extensions, and A2A 0.3 compatibility (server and client). The TCK MUST level now passes 161 distinct tests (was 137), in plain PHP and on a queued Laravel app. Both packages are released as 0.3.0; `a2a-laravel` requires `a2a-php` `^0.3`.
@@ -133,7 +152,8 @@ First release: A2A 1.0 client and server for PHP 8.2+. The server passes the off
 - Requires `php-http/discovery` (finds a PSR-18 client when none is given) and
   `psr/http-factory` ^1.1.
 
-[Unreleased]: https://github.com/praveendias1180/a2a-php/compare/v0.3.0...HEAD
+[Unreleased]: https://github.com/praveendias1180/a2a-php/compare/v1.0.0...HEAD
+[1.0.0]: https://github.com/praveendias1180/a2a-php/releases/tag/v1.0.0
 [0.3.0]: https://github.com/praveendias1180/a2a-php/releases/tag/v0.3.0
 [0.2.0]: https://github.com/praveendias1180/a2a-php/releases/tag/v0.2.0
 [0.1.0]: https://github.com/praveendias1180/a2a-php/releases/tag/v0.1.0

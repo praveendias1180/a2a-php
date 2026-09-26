@@ -24,6 +24,8 @@ namespace A2A\Utils;
  * Serialization is depth-limited: nesting is attacker-controlled through
  * AgentExtension.params (a google.protobuf.Struct), and unbounded recursion
  * would crash whichever process verifies the card.
+ *
+ * @internal Not covered by the 1.x backward-compatibility promise; may change in any release.
  */
 final class Jcs
 {

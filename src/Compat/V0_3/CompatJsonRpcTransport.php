@@ -42,6 +42,8 @@ use A2A\Utils\Uuid;
  * `A2A-Version: 0.3` and both extension headers. Differences: the request
  * always states `blocking` (the opposite of returnImmediately), so a v0.3
  * server never falls back to its own default.
+ *
+ * @internal Not covered by the 1.x backward-compatibility promise; may change in any release.
  */
 final class CompatJsonRpcTransport implements ClientTransport
 {

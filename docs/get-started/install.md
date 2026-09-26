@@ -12,8 +12,8 @@
 composer require praveendias1180/a2a-php
 ```
 
-!!! note "Pre-1.0"
-    Versions are `0.x` until 1.0, so minor releases may still change the API. Pin a minor version (`^0.3`) and read the [changelog](../project/changelog.md) before upgrading.
+!!! note "Versions"
+    From 1.0 the SDK follows [Semantic Versioning](../reference/backward-compatibility.md): `^1.0` gets you every 1.x fix and feature without breaking changes. Install `praveendias1180/a2a-php` and `praveendias1180/a2a-laravel` at the same major version.
 
 ### Faster protobuf (optional)
 

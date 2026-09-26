@@ -7,6 +7,8 @@ namespace A2A\Client\Sse;
 /**
  * One Server-Sent Event: its name (default "message") and its data, with
  * multi-line data joined by "\n".
+ *
+ * @internal Not covered by the 1.x backward-compatibility promise; may change in any release.
  */
 final class SseEvent
 {

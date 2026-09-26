@@ -17,6 +17,8 @@ namespace A2A\Client\Sse;
  * (keep-alives), one leading space after the colon is stripped, and `id` /
  * `retry` are ignored. Lines may end in LF, CRLF or CR. A final event with no
  * terminating blank line is discarded, as the spec says.
+ *
+ * @internal Not covered by the 1.x backward-compatibility promise; may change in any release.
  */
 final class EventStreamParser
 {

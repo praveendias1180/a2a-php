@@ -35,6 +35,8 @@ use Psr\Log\NullLogger;
  * Mirrors a2a-python: REST03Adapter in src/a2a/compat/v0_3/rest_adapter.py.
  * ListTasks is not served: it is not in the v0.3 spec (Python leaves it out
  * too).
+ *
+ * @internal Not covered by the 1.x backward-compatibility promise; may change in any release.
  */
 final class Rest03Adapter
 {

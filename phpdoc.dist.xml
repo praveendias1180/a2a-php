@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!-- API reference, published under /api/ on the docs site (see .github/workflows/docs.yml). -->
+<phpdocumentor
+    configVersion="3"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xmlns="https://www.phpdoc.org"
+    xsi:noNamespaceSchemaLocation="https://docs.phpdoc.org/latest/phpdoc.xsd"
+>
+    <title>A2A PHP SDK</title>
+    <paths>
+        <output>site/api</output>
+        <cache>build/phpdoc-cache</cache>
+    </paths>
+    <version number="latest">
+        <api>
+            <source dsn=".">
+                <path>src</path>
+                <path>packages/laravel/src</path>
+                <path>generated/A2A/Types</path>
+            </source>
+            <ignore hidden="true" symlinks="true">
+                <path>generated/A2A/Types/GPBMetadata</path>
+                <path>generated/A2A/Types/Meta</path>
+            </ignore>
+            <extensions>
+                <extension>php</extension>
+            </extensions>
+            <visibility>public</visibility>
+            <visibility>protected</visibility>
+            <default-package-name>A2A</default-package-name>
+            <include-source>false</include-source>
+        </api>
+    </version>
+    <setting name="guides.enabled" value="false"/>
+</phpdocumentor>

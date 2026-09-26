@@ -5,11 +5,14 @@ A PHP implementation of the [A2A (Agent2Agent) protocol](https://a2a-protocol.or
 **Targets A2A 1.0**, the current spec. Types are generated from the official `a2a.proto`, and the server passes the official A2A test kit (TCK) at the MUST, SHOULD and MAY levels over JSON-RPC and HTTP+JSON, checked in CI on every push, both as plain PHP and as a Laravel app with queued execution. Works with any framework (PSR-7/15/17/18), with a Laravel bridge.
 
 [![CI](https://github.com/praveendias1180/a2a-php/actions/workflows/ci.yml/badge.svg)](https://github.com/praveendias1180/a2a-php/actions/workflows/ci.yml)
-[![A2A TCK](https://img.shields.io/badge/A2A_TCK-MUST_137%2F137-brightgreen)](https://praveendias1180.github.io/a2a-php/reference/conformance/)
+[![A2A TCK](https://img.shields.io/badge/A2A_TCK-MUST_161_passed%2C_0_failed-brightgreen)](https://praveendias1180.github.io/a2a-php/reference/conformance/)
+[![Packagist version](https://img.shields.io/packagist/v/praveendias1180/a2a-php)](https://packagist.org/packages/praveendias1180/a2a-php)
+[![PHP version](https://img.shields.io/packagist/dependency-v/praveendias1180/a2a-php/php)](https://packagist.org/packages/praveendias1180/a2a-php)
+[![License](https://img.shields.io/packagist/l/praveendias1180/a2a-php)](LICENSE)
 
 📖 **Documentation: <https://praveendias1180.github.io/a2a-php/>**
 
-> **Status: early development (phase 7 of 7).** The wire types, utilities, client, server, Laravel bridge, push notifications, Agent Card signing, extensions and A2A 0.3 compatibility are done. The server passes the official A2A TCK (plain PHP, and a Laravel app running executors on queue workers), and the SDK interoperates with the official Python SDK in both directions, including card signatures, and with the last A2A 0.3 release of the Python SDK. 1.0 is next. The API may still change before 1.0. See the [roadmap](#roadmap).
+> **Status: stable (1.x).** Client, server, Laravel bridge, push notifications, Agent Card signing, extensions and A2A 0.3 compatibility. The server passes the official A2A TCK (plain PHP, and a Laravel app running executors on queue workers), and the SDK interoperates with the official Python SDK in both directions, including card signatures, and with the last A2A 0.3 release of the Python SDK. From 1.0 the public API follows [SemVer](https://praveendias1180.github.io/a2a-php/reference/backward-compatibility/); upgrading from 0.x: see the [upgrade guide](https://praveendias1180.github.io/a2a-php/guides/upgrading/).
 
 ## Packages
 
@@ -143,7 +146,7 @@ That mounts the Agent Card, JSON-RPC and HTTP+JSON. Set `A2A_RUNNER=queued` and 
 | 4 | Laravel bridge | ✅ |
 | 5 | Push notifications, card signing, extensions (the PDO stores arrived early, in phase 3) | ✅ |
 | 6 | v0.3 compatibility | ✅ |
-| 7 | 1.0.0 | stable release |
+| 7 | 1.0.0: API review, API reference, upgrade guide, benchmarks, upstream watch | ✅ |
 
 Design notes: [Architecture](https://praveendias1180.github.io/a2a-php/architecture/). The class-by-class mapping to the Python SDK: [Python → PHP mapping](https://praveendias1180.github.io/a2a-php/python-sdk-mapping/).
 

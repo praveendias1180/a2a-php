@@ -15,6 +15,8 @@ use Psr\Http\Message\ServerRequestInterface;
  *
  * Mirrors a2a-python: V03ServerCallContextBuilder in
  * src/a2a/compat/v0_3/context_builders.py.
+ *
+ * @internal Not covered by the 1.x backward-compatibility promise; may change in any release.
  */
 final class V03ServerCallContextBuilder implements ServerCallContextBuilder
 {

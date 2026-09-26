@@ -16,6 +16,8 @@ use Google\Protobuf\Timestamp;
  * Mirrors a2a-python: ToProto in src/a2a/compat/v0_3/proto_utils.py, for the
  * types the REST binding carries. Unlike Python, the status timestamp is
  * kept.
+ *
+ * @internal Not covered by the 1.x backward-compatibility promise; may change in any release.
  */
 final class ToProto
 {

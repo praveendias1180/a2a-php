@@ -1,6 +1,6 @@
 # Upstream pins
 
-This SDK tracks these upstream sources. Bump both deliberately, in their own PR.
+This SDK tracks these upstream sources. Bump them deliberately, in their own PR. `.github/workflows/upstream-watch.yml` checks them weekly and keeps one GitHub issue (label `upstream`) listing what changed upstream; `scripts/upstream-watch.py` reads the pins from the files below, so keep them there.
 
 | Upstream | Pinned at | Used for |
 |---|---|---|
@@ -12,6 +12,6 @@ This SDK tracks these upstream sources. Bump both deliberately, in their own PR.
 | buf PHP plugin | `buf.build/protocolbuffers/php:v36.2` | Code generation |
 
 Notes:
-- The spec `v1.0.1` changes only comments in `a2a.proto`. The Python SDK also stays on `v1.0.0`.
+- The spec `v1.0.1` changes only comments in `a2a.proto`. The Python SDK also stays on `v1.0.0`. As of 2026-09-26, `a2aproject/A2A` main has 2 later `a2a.proto` commits (a tenant-field doc clarification and a comment fix) and no new release tag after `v1.0.1`; the Python SDK and the TCK have nothing new since our pins.
 - When the Python SDK adds, renames or removes a public class, update `docs/python-sdk-mapping.md` first, then the code.
 - The TCK bundles the v1.0 **release-candidate** spec, which maps `TaskNotCancelableError` to HTTP 409; the released v1.0.0 table says 400. We follow the TCK (see CHANGELOG).

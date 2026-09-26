@@ -2,6 +2,9 @@
 
 Reference: `a2aproject/a2a-python` @ `0d5473c` (2026-09-24). This is PyPI `a2a-sdk`, 118 test files, Apache-2.0. **This table is the "same shape" contract:** every public Python class gets a PHP class with the same name, in the same position in the tree. Method names change from `snake_case` to `camelCase`. That is the only rename.
 
+!!! info "Public API vs internals"
+    Some classes below exist to mirror Python's internals and are marked `@internal` in PHP, for example `EventConsumer`, `ActiveTaskRegistry`, the SSE parser, `HttpSenderFactory`, `ResponseHelpers`, `Jcs` and every `Compat\V0_3` class. They are not covered by the [backward-compatibility promise](reference/backward-compatibility.md) and are left out of the [API reference](reference/api.md).
+
 **Rule for changes:** when Python adds, renames or removes a public class, update this table first, then the code.
 
 ## Package layout
@@ -47,7 +50,7 @@ Reference: `a2aproject/a2a-python` @ `0d5473c` (2026-09-24). This is PyPI `a2a-s
 | `…/push_notification_sender.py`, `base_push_notification_sender.py` | `Server\Tasks\PushNotificationSender`, `BasePushNotificationSender` | Sends through the client's HttpSender layer (Guzzle, Symfony or any PSR-18 client). Adds the `Authorization` header from the config's `authentication`, retries with backoff, a stable `X-A2A-Notification-Id`, address pinning and no redirects; SSRF screening is on by default. |
 | `server/request_handlers/request_handler.py` `RequestHandler` | `Server\RequestHandlers\RequestHandler` (interface) | `onGetTask`, `onListTasks`, `onCancelTask`, `onMessageSend`, `onMessageSendStream` (a Generator), `onSubscribeToTask` (a Generator; may yield `null` keep-alive ticks), `on{Create,Get,List,Delete}TaskPushNotificationConfig`, `onGetExtendedAgentCard`, and PHP's `runBackgroundWork()`. |
 | `…/default_request_handler_v2.py` `DefaultRequestHandler(V2)` | `Server\RequestHandlers\DefaultRequestHandler` | We port only V2. Python keeps the older `LegacyRequestHandler` around for its own compatibility; we have no old users to keep working, so we skip it. Differences are listed on [Conformance](reference/conformance.md). |
-| `…/response_helpers.py` | `Utils\ErrorHandlers`, `Server\Routes\Common` | Error envelopes come from phase 1's `ErrorHandlers`; `Common` holds the JSON helpers. |
+| `…/response_helpers.py` | `Utils\ErrorHandlers`, `Server\Routes\Common` | Error envelopes come from `ErrorHandlers`; `Common` holds the JSON helpers. |
 | `…/grpc_handler.py` | `Server\RequestHandlers\GrpcHandler` | grpc package, later. |
 | `server/context.py` `ServerCallContext` | `Server\ServerCallContext` | `user`, `state`, `requestedExtensions`, `tenant`, plus `activatedExtensions` (echoed in the `A2A-Extensions` response header). |
 | `server/owner_resolver.py`, `id_generator.py` | same | Owner = which user a task belongs to. This is how "not found" and "not allowed" stay the same. |
@@ -59,7 +62,7 @@ Reference: `a2aproject/a2a-python` @ `0d5473c` (2026-09-24). This is PyPI `a2a-s
 
 ### Client
 
-Built in phase 2. Namespace `A2A\Client`.
+Namespace `A2A\Client`.
 
 | Python (`src/a2a/client/…`) | PHP | Notes |
 |---|---|---|

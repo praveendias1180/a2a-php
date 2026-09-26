@@ -20,6 +20,8 @@ use Psr\Http\Message\ServerRequestInterface;
  * Also serves DELETE on a push config (in the v0.3 proto, not in Python's
  * route table), and the card comes back with camelCase keys (Python dumps
  * the pydantic model without aliases).
+ *
+ * @internal Not covered by the 1.x backward-compatibility promise; may change in any release.
  */
 final class Rest03Handler
 {

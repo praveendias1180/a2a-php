@@ -10,6 +10,8 @@ use A2A\Utils\Constants;
  * Protocol-version checks for the v0.3 compatibility layer.
  *
  * Mirrors a2a-python: src/a2a/compat/v0_3/versions.py.
+ *
+ * @internal Not covered by the 1.x backward-compatibility promise; may change in any release.
  */
 final class Versions
 {

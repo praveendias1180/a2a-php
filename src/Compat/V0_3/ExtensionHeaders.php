@@ -12,6 +12,8 @@ use A2A\Extensions\Common;
  * and send both.
  *
  * Mirrors a2a-python: src/a2a/compat/v0_3/extension_headers.py.
+ *
+ * @internal Not covered by the 1.x backward-compatibility promise; may change in any release.
  */
 final class ExtensionHeaders
 {

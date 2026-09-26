@@ -64,6 +64,8 @@ use Google\Protobuf\Value;
  * Mirrors a2a-python: src/a2a/compat/v0_3/conversions.py, function for
  * function (`to_core_x` → `toCoreX`, `to_compat_x` → `toCompatX`). The
  * request-level converters take and return the JSON-RPC `params` object.
+ *
+ * @internal Not covered by the 1.x backward-compatibility promise; may change in any release.
  */
 final class Conversions
 {

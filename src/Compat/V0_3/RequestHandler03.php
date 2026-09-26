@@ -17,6 +17,8 @@ use A2A\Utils\ProtoUtils;
  * Mirrors a2a-python: RequestHandler03 in src/a2a/compat/v0_3/request_handler.py.
  * Arguments are the JSON-RPC `params` object instead of the whole pydantic
  * request, and streams pass keep-alive ticks (null) through unchanged.
+ *
+ * @internal Not covered by the 1.x backward-compatibility promise; may change in any release.
  */
 final class RequestHandler03
 {

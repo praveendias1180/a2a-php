@@ -24,7 +24,7 @@ How the PHP SDK maps the Python SDK's design onto PHP, and where it has to diffe
 
 ## 3. The runtime problem, and how we handle it
 
-In Python, `DefaultRequestHandler` starts the executor as an asyncio task. That task keeps running after `SendMessage` returns, and many streams can listen to it. **PHP-FPM can't do that.** Everything is one request, one process, then exit. Three pieces solve it (built in phase 3).
+In Python, `DefaultRequestHandler` starts the executor as an asyncio task. That task keeps running after `SendMessage` returns, and many streams can listen to it. **PHP-FPM can't do that.** Everything is one request, one process, then exit. Three pieces solve it.
 
 **1. The executor runs in a Fiber (`ActiveTask`).** Each `enqueueEvent()` suspends the Fiber. The `EventConsumer` then:
 - checks the event (the same rules as Python: one Message *or* task mode, nothing after a terminal state),
@@ -103,7 +103,7 @@ The Python `DatabaseTaskStore` columns (including the `owner` and `protocol_vers
   2. Builds `ServerCallContext` through the builder, which gets the auth user.
   3. Calls `RequestHandler`.
   4. Turns exceptions into spec error bodies.
-- **Client (built in phase 2):** sending goes through `Client\Http\HttpSender`, because PSR-18 hands back complete responses and so can't stream SSE. `HttpSenderFactory` wraps what you have: Guzzle and Symfony HttpClient stream live, any other PSR-18 client works with buffered streams, and with nothing given it picks Guzzle, then Symfony, then any PSR-18 client php-http/discovery finds. Guzzle's streaming requests go out as HTTP/1.0, because PHP's `http://` wrapper, which Guzzle streams through, holds a chunked HTTP/1.1 body back until it ends. `Sse\EventStreamParser` reads SSE incrementally, handling lines and CRLF pairs split across chunks.
+- **Client:** sending goes through `Client\Http\HttpSender`, because PSR-18 hands back complete responses and so can't stream SSE. `HttpSenderFactory` wraps what you have: Guzzle and Symfony HttpClient stream live, any other PSR-18 client works with buffered streams, and with nothing given it picks Guzzle, then Symfony, then any PSR-18 client php-http/discovery finds. Guzzle's streaming requests go out as HTTP/1.0, because PHP's `http://` wrapper, which Guzzle streams through, holds a chunked HTTP/1.1 body back until it ends. `Sse\EventStreamParser` reads SSE incrementally, handling lines and CRLF pairs split across chunks.
 - **gRPC:** later, in its own package.
 
 ## 6. Security built in (not left to users)
@@ -113,7 +113,7 @@ The Python `DatabaseTaskStore` columns (including the `owner` and `protocol_vers
 - Card signing and checking: JWS + RFC 8785 JCS (`Utils\Signing`, needs firebase/php-jwt). The client verifies signatures when given a verifier. See [Signing the Agent Card](guides/card-signing.md).
 - The Laravel bridge maps each security scheme the card requires to route middleware (`a2a.security_schemes`, e.g. `bearer => auth:sanctum`), and scopes tasks to the authenticated Laravel user.
 
-## 7. Laravel developer experience (built in phase 4)
+## 7. Laravel developer experience
 
 ```php
 // routes/api.php

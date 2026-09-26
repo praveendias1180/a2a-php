@@ -1,0 +1,29 @@
+# Manual only: runs scripts/benchmark.php with the pure-PHP protobuf runtime and
+# with ext-protobuf, so docs/reference/performance.md can be refreshed.
+# Shared GitHub runners are noisy; compare numbers from the same run only.
+name: Benchmark
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  benchmark:
+    name: PHP ${{ matrix.php }} (${{ matrix.runtime }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        php: ['8.4']
+        runtime: [pure-php, ext-protobuf]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          coverage: none
+          extensions: ${{ matrix.runtime == 'ext-protobuf' && 'protobuf' || '' }}
+      - uses: ramsey/composer-install@v3
+      - run: php scripts/benchmark.php --seconds=3 | tee "$GITHUB_STEP_SUMMARY"
