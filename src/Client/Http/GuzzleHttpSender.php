@@ -22,7 +22,7 @@ use Psr\Http\Message\ResponseInterface;
  * and closes the connection at the end, which is exactly how an event
  * stream behaves anyway. Non-streaming requests keep HTTP/1.1.
  */
-final class GuzzleHttpSender implements HttpSender
+final class GuzzleHttpSender implements HttpSender, PinsAddresses
 {
     public function __construct(private readonly ClientInterface $client) {}
 
@@ -63,6 +63,16 @@ final class GuzzleHttpSender implements HttpSender
         return true;
     }
 
+    /**
+     * Pinning uses CURLOPT_RESOLVE, so it needs ext-curl (Guzzle's curl
+     * handler). Streaming requests use PHP's stream wrapper and are not
+     * pinned; push notifications never stream.
+     */
+    public function pinsAddresses(): bool
+    {
+        return \extension_loaded('curl');
+    }
+
     private function request(HttpRequest $request, bool $stream): ResponseInterface
     {
         $options = [
@@ -80,6 +90,15 @@ final class GuzzleHttpSender implements HttpSender
             $options[RequestOptions::TIMEOUT] = $request->timeout;
             $options[RequestOptions::READ_TIMEOUT] = $request->timeout;
         }
+        if (!$request->followRedirects) {
+            $options[RequestOptions::ALLOW_REDIRECTS] = false;
+        }
+        if ($request->pinnedAddress !== null && !$stream && \defined('CURLOPT_RESOLVE')) {
+            $resolve = self::curlResolveEntry($request->url, $request->pinnedAddress);
+            if ($resolve !== null) {
+                $options[RequestOptions::CURL] = [\CURLOPT_RESOLVE => [$resolve]];
+            }
+        }
 
         try {
             return $this->client->request($request->method, $request->url, $options);
@@ -90,6 +109,22 @@ final class GuzzleHttpSender implements HttpSender
 
             throw new A2AClientError('Network communication error: ' . $e->getMessage(), null, $e);
         }
+    }
+
+    /**
+     * "host:port:address" for CURLOPT_RESOLVE (IPv6 addresses in brackets).
+     */
+    private static function curlResolveEntry(string $url, string $address): ?string
+    {
+        $parts = parse_url($url);
+        if ($parts === false || !isset($parts['host'])) {
+            return null;
+        }
+        $host = trim($parts['host'], '[]');
+        $port = $parts['port'] ?? (strtolower($parts['scheme'] ?? '') === 'https' ? 443 : 80);
+        $address = str_contains($address, ':') ? '[' . $address . ']' : $address;
+
+        return $host . ':' . $port . ':' . $address;
     }
 
     /**

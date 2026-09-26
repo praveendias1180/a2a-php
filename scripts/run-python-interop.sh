@@ -5,6 +5,8 @@
 #      (tests/Interop/python/hello_world_agent.py)
 #   2. the Python client (tests/Interop/python/client_against_php.py)
 #      against the PHP hello-world server (examples/hello-world/server.php)
+#   3. Agent Card signing: a Python-signed card verifies in PHP and a
+#      PHP-signed card verifies in Python (tests/Interop/python/signing_interop.py)
 #
 # Needs python3 with the pinned SDK:
 #     pip install -r tests/Interop/python/requirements.txt
@@ -86,3 +88,8 @@ done
 for binding in JSONRPC HTTP+JSON; do
     python3 tests/Interop/python/client_against_php.py "http://127.0.0.1:${php_port}" "$binding"
 done
+
+# 3. Agent Card signing across SDKs (Python signs / PHP verifies and back).
+echo
+echo "Agent Card signing (tests/Interop/python/signing_interop.py):"
+python3 tests/Interop/python/signing_interop.py

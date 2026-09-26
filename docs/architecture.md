@@ -91,7 +91,7 @@ Implementations: `InMemoryQueueManager` (one process), `PdoQueueManager` (SQLite
 | Store | Core | Laravel |
 |---|---|---|
 | `TaskStore` | `InMemoryTaskStore`, `PdoTaskStore` (one `{prefix}tasks` table: id, context_id, owner, status_state, status_timestamp (µs), protocol_version, task_json) | the core `PdoTaskStore` on the app's connection (not an Eloquent reimplementation, so behaviour is identical to what the TCK checks); a publishable migration creates the table with the core's own DDL |
-| `PushNotificationConfigStore` | InMemory (Pdo in phase 5) | `DatabasePushNotificationConfigStore`: an Eloquent model, the whole config **encrypted** (`encrypted` cast) |
+| `PushNotificationConfigStore` | InMemory, Pdo (optional encryption) | `DatabasePushNotificationConfigStore`: an Eloquent model, the whole config **encrypted** (`encrypted` cast) |
 | `QueueManager` | InMemory, `PdoQueueManager` (`{prefix}task_events`, `{prefix}task_flags`) | `RedisQueueManager`: Redis Streams (`a2a:events:{task}`, stream ids `0-{seq}`, a Lua script keeps sequence and XADD atomic), TTL after the task goes final; or the core `PdoQueueManager` on the app's connection |
 
 The Python `DatabaseTaskStore` columns (including the `owner` and `protocol_version` migrations) are the model for our schema, so both SDKs store the same thing. `PdoQueueManager::prune()` deletes old events; run it from a scheduled job.
@@ -108,9 +108,9 @@ The Python `DatabaseTaskStore` columns (including the `owner` and `protocol_vers
 
 ## 6. Security built in (not left to users)
 
-- Push URLs pass `PushUrlValidator` (resolve DNS, then check every address against the private ranges, so DNS rebinding can't get round it) before we save or call them. Same for fetching `url` Parts.
+- Push URLs pass `PushUrlValidator` (resolve DNS, then check every address against the private ranges) when a config is saved and again before every delivery attempt; with Guzzle (ext-curl) or Symfony HttpClient the delivery connects to exactly the checked address, so DNS rebinding can't get round it, and redirects are never followed. See [Push notifications](guides/push-notifications.md).
 - Tasks are scoped to their owner in every store query. A task owned by someone else gives `TaskNotFoundError`, never "forbidden".
-- Card signing and checking: JWS + RFC 8785 JCS. The client verifies signatures when the card has them.
+- Card signing and checking: JWS + RFC 8785 JCS (`Utils\Signing`, needs firebase/php-jwt). The client verifies signatures when given a verifier. See [Signing the Agent Card](guides/card-signing.md).
 - The Laravel bridge maps each security scheme the card requires to route middleware (`a2a.security_schemes`, e.g. `bearer => auth:sanctum`), and scopes tasks to the authenticated Laravel user.
 
 ## 7. Laravel developer experience (built in phase 4)

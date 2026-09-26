@@ -10,7 +10,18 @@ use A2A\Types\AgentExtension;
 /**
  * Helpers for A2A protocol extensions.
  *
- * Mirrors a2a-python: src/a2a/extensions/common.py
+ * Negotiation (spec §4.6 and the extensions guide): the client lists the
+ * extension URIs it wants in the `A2A-Extensions` header; the agent
+ * activates the ones it declares in its card and SHOULD echo the activated
+ * list back in the same header; a request that does not ask for an
+ * extension the card marks `required` MUST fail with
+ * ExtensionSupportRequiredError. activatableExtensions() and
+ * missingRequiredExtensions() are the two halves of that; the
+ * DefaultRequestHandler applies them.
+ *
+ * Mirrors a2a-python: src/a2a/extensions/common.py (Python stops at parsing
+ * the header; activation, echoing and the required check are PHP additions
+ * that follow the spec).
  */
 final class Common
 {
@@ -51,5 +62,37 @@ final class Common
         }
 
         return null;
+    }
+
+    /**
+     * The requested URIs the card declares, in request order: what the
+     * agent activates for the request.
+     *
+     * @param list<string> $requested
+     *
+     * @return list<string>
+     */
+    public static function activatableExtensions(AgentCard $card, array $requested): array
+    {
+        return array_values(array_filter($requested, static fn(string $uri): bool => self::findExtensionByUri($card, $uri) !== null));
+    }
+
+    /**
+     * URIs the card marks required that the client did not request.
+     *
+     * @param list<string> $requested
+     *
+     * @return list<string>
+     */
+    public static function missingRequiredExtensions(AgentCard $card, array $requested): array
+    {
+        $missing = [];
+        foreach ($card->getCapabilities()?->getExtensions() ?? [] as $extension) {
+            if ($extension->getRequired() && !in_array($extension->getUri(), $requested, true)) {
+                $missing[] = $extension->getUri();
+            }
+        }
+
+        return $missing;
     }
 }

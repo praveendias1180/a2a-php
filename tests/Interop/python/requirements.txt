@@ -1,3 +1,3 @@
 # The official A2A Python SDK release matching the reference commit in UPSTREAM.md.
-a2a-sdk[http-server,fastapi,grpc]==1.1.5
+a2a-sdk[http-server,fastapi,grpc,signing]==1.1.5
 uvicorn==0.54.0

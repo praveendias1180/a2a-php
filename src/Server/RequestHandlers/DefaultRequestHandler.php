@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace A2A\Server\RequestHandlers;
 
+use A2A\Extensions\Common;
 use A2A\Server\AgentExecution\ActiveTask;
 use A2A\Server\AgentExecution\ActiveTaskRegistry;
 use A2A\Server\AgentExecution\AgentExecutor;
@@ -16,6 +17,7 @@ use A2A\Server\Events\InMemoryQueueManager;
 use A2A\Server\Events\QueueManager;
 use A2A\Server\ServerCallContext;
 use A2A\Server\Tasks\PushNotificationConfigStore;
+use A2A\Server\Tasks\PushNotificationSender;
 use A2A\Server\Tasks\TaskStates;
 use A2A\Server\Tasks\TaskStore;
 use A2A\Types\AgentCard;
@@ -36,6 +38,7 @@ use A2A\Types\TaskPushNotificationConfig;
 use A2A\Types\TaskState;
 use A2A\Types\TaskStatusUpdateEvent;
 use A2A\Utils\Errors\ExtendedAgentCardNotConfiguredError;
+use A2A\Utils\Errors\ExtensionSupportRequiredError;
 use A2A\Utils\Errors\InternalError;
 use A2A\Utils\Errors\InvalidParamsError;
 use A2A\Utils\Errors\PushNotificationNotSupportedError;
@@ -43,6 +46,7 @@ use A2A\Utils\Errors\TaskNotCancelableError;
 use A2A\Utils\Errors\TaskNotFoundError;
 use A2A\Utils\Errors\UnsupportedOperationError;
 use A2A\Utils\ProtoUtils;
+use A2A\Utils\PushUrlValidator;
 use A2A\Utils\TaskUtils;
 use Google\Protobuf\Internal\Message as ProtobufMessage;
 use Psr\Log\LoggerInterface;
@@ -78,7 +82,8 @@ final class DefaultRequestHandler implements RequestHandler
 
     /**
      * @param (\Closure(AgentCard, ServerCallContext): AgentCard)|null $extendedCardModifier
-     * @param (\Closure(string): bool)|null                           $pushUrlValidator
+     * @param PushUrlValidator|(\Closure(string): bool)|null          $pushUrlValidator checks push URLs when a config is
+     *                                                                 created (the sender checks again before each send)
      * @param float $keepAliveSeconds     how often idle streams send a keep-alive tick
      * @param float $cancelTimeoutSeconds how long a cancel waits for a task running in another process to stop
      * @param float $subscribePollSeconds how long each SubscribeToTask poll of the QueueManager waits
@@ -96,18 +101,19 @@ final class DefaultRequestHandler implements RequestHandler
         ?RequestContextBuilder $requestContextBuilder = null,
         private readonly ?AgentCard $extendedAgentCard = null,
         private readonly ?\Closure $extendedCardModifier = null,
-        private readonly ?\Closure $pushUrlValidator = null,
+        private readonly PushUrlValidator|\Closure|null $pushUrlValidator = null,
         ?TaskRunner $taskRunner = null,
         private readonly LoggerInterface $logger = new NullLogger(),
         private readonly float $keepAliveSeconds = 15.0,
         private readonly float $cancelTimeoutSeconds = 10.0,
         private readonly float $subscribePollSeconds = 0.25,
         private readonly ?float $maxSubscribeIdleSeconds = null,
+        private readonly ?PushNotificationSender $pushSender = null,
     ) {
         $this->queueManager = $queueManager ?? new InMemoryQueueManager();
         $this->requestContextBuilder = $requestContextBuilder
             ?? new SimpleRequestContextBuilder(shouldPopulateReferredTasks: false, taskStore: $this->taskStore);
-        $this->activeTaskRegistry = new ActiveTaskRegistry($this->agentExecutor, $this->taskStore, $this->queueManager, $this->logger);
+        $this->activeTaskRegistry = new ActiveTaskRegistry($this->agentExecutor, $this->taskStore, $this->queueManager, $this->logger, $this->pushSender);
         $this->taskRunner = $taskRunner ?? new InlineTaskRunner($this->queueManager, $this->logger);
     }
 
@@ -381,6 +387,7 @@ final class DefaultRequestHandler implements RequestHandler
      */
     private function setupActiveTask(SendMessageRequest $params, ServerCallContext $context): array
     {
+        $this->negotiateExtensions($context);
         TaskUtils::validateHistoryLength($params->getConfiguration());
         $message = $params->getMessage();
         if ($message === null) {
@@ -447,6 +454,27 @@ final class DefaultRequestHandler implements RequestHandler
     {
         if ($this->agentCard->getCapabilities()?->getStreaming() !== true) {
             throw new UnsupportedOperationError('Streaming is not supported by the agent');
+        }
+    }
+
+    /**
+     * Extension negotiation for a message: fail when the client did not ask
+     * for an extension the card marks required, then activate the
+     * requested extensions the card declares (the dispatchers echo them in
+     * the `A2A-Extensions` response header). Python leaves both to the
+     * application; the spec makes the first a MUST and the echo a SHOULD.
+     */
+    private function negotiateExtensions(ServerCallContext $context): void
+    {
+        $missing = Common::missingRequiredExtensions($this->agentCard, $context->requestedExtensions);
+        if ($missing !== []) {
+            throw new ExtensionSupportRequiredError(
+                sprintf('The agent requires extension(s) the client did not request: %s', implode(', ', $missing)),
+                ['requiredExtensions' => $missing],
+            );
+        }
+        foreach (Common::activatableExtensions($this->agentCard, $context->requestedExtensions) as $uri) {
+            $context->activateExtension($uri);
         }
     }
 

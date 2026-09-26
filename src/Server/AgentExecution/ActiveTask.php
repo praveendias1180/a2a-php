@@ -7,6 +7,7 @@ namespace A2A\Server\AgentExecution;
 use A2A\Server\Events\PublishedEvent;
 use A2A\Server\Events\QueueManager;
 use A2A\Server\ServerCallContext;
+use A2A\Server\Tasks\PushNotificationSender;
 use A2A\Server\Tasks\TaskManager;
 use A2A\Server\Tasks\TaskStates;
 use A2A\Types\Message;
@@ -45,6 +46,7 @@ final class ActiveTask
         private readonly TaskManager $taskManager,
         private readonly QueueManager $queueManager,
         private readonly LoggerInterface $logger = new NullLogger(),
+        private readonly ?PushNotificationSender $pushSender = null,
     ) {}
 
     public function taskId(): string
@@ -87,7 +89,7 @@ final class ActiveTask
         $current = $this->taskManager->getTask();
         $request->setCurrentTask($current);
 
-        $consumer = new EventConsumer($this->taskManager, $this->queueManager, $this->taskId, $current !== null);
+        $consumer = new EventConsumer($this->taskManager, $this->queueManager, $this->taskId, $current !== null, $this->pushSender, $this->logger);
         $consumer->requestStarted($request);
 
         $token = new CancellationToken(fn(): bool => $this->queueManager->isCancelRequested($this->taskId));
@@ -149,7 +151,7 @@ final class ActiveTask
             throw new TaskNotFoundError();
         }
 
-        $consumer = new EventConsumer($this->taskManager, $this->queueManager, $this->taskId, true);
+        $consumer = new EventConsumer($this->taskManager, $this->queueManager, $this->taskId, true, $this->pushSender, $this->logger);
         $request = new RequestContext(
             callContext: $callContext,
             taskId: $this->taskId,

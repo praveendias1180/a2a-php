@@ -65,4 +65,18 @@ final class Common
 
         return $result;
     }
+
+    /**
+     * Echoes the extensions activated for the request in the
+     * `A2A-Extensions` response header (spec: the response SHOULD list
+     * them). No header when none were activated.
+     */
+    public static function withActivatedExtensions(\Psr\Http\Message\ResponseInterface $response, \A2A\Server\ServerCallContext $context): \Psr\Http\Message\ResponseInterface
+    {
+        if ($context->activatedExtensions === []) {
+            return $response;
+        }
+
+        return $response->withHeader(\A2A\Extensions\Common::HTTP_EXTENSION_HEADER, implode(',', $context->activatedExtensions));
+    }
 }

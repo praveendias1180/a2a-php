@@ -42,10 +42,11 @@ final class Routes
 
     /**
      * @param (\Closure(AgentCard): AgentCard)|null $cardModifier
+     * @param (\Closure(AgentCard): AgentCard)|null $signer       from Signing::createAgentCardSigner(); serves the card signed
      */
-    public static function agentCard(AgentCard $agentCard, ?\Closure $cardModifier = null): AgentCardHandler
+    public static function agentCard(AgentCard $agentCard, ?\Closure $cardModifier = null, ?\Closure $signer = null): AgentCardHandler
     {
-        return new AgentCardHandler($agentCard, $cardModifier);
+        return new AgentCardHandler($agentCard, $cardModifier, signer: $signer);
     }
 
     /**
@@ -60,9 +61,10 @@ final class Routes
         string $agentCardPath = Constants::AGENT_CARD_WELL_KNOWN_PATH,
         ?ServerCallContextBuilder $contextBuilder = null,
         LoggerInterface $logger = new NullLogger(),
+        ?\Closure $cardSigner = null,
     ): Router {
         $router = new Router();
-        $router->add($agentCardPath, self::agentCard($agentCard));
+        $router->add($agentCardPath, self::agentCard($agentCard, signer: $cardSigner));
         if ($jsonRpcPath !== null) {
             $router->add($jsonRpcPath, self::jsonRpc($requestHandler, $contextBuilder, $logger));
         }

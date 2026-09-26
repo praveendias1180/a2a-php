@@ -6,6 +6,7 @@ namespace A2A\Server\AgentExecution;
 
 use A2A\Server\Events\PublishedEvent;
 use A2A\Server\Events\QueueManager;
+use A2A\Server\Tasks\PushNotificationSender;
 use A2A\Server\Tasks\TaskManager;
 use A2A\Server\Tasks\TaskStates;
 use A2A\Types\Message;
@@ -16,6 +17,8 @@ use A2A\Types\TaskStatus;
 use A2A\Types\TaskStatusUpdateEvent;
 use A2A\Utils\Errors\InvalidAgentResponseError;
 use Google\Protobuf\Timestamp;
+use Psr\Log\LoggerInterface;
+use Psr\Log\NullLogger;
 
 /**
  * Checks each event the agent publishes, applies it to the task through the
@@ -24,6 +27,11 @@ use Google\Protobuf\Timestamp;
  * It enforces the same rules as the Python SDK: an agent either replies
  * with exactly one Message, or works in task mode (a Task plus status and
  * artifact updates), never both, and nothing may follow a terminal state.
+ *
+ * With a PushNotificationSender it also sends every task-mode event (the
+ * updated Task for a Task event, the event itself otherwise) after it is
+ * saved and published, as Python's EventConsumer._update_task_state does.
+ * A sender failure is logged and never fails the task.
  *
  * Mirrors a2a-python: EventConsumer in
  * src/a2a/server/agent_execution/active_task.py (driven synchronously
@@ -42,6 +50,8 @@ final class EventConsumer
         private readonly QueueManager $queueManager,
         private readonly string $taskId,
         private bool $taskCreated = false,
+        private readonly ?PushNotificationSender $pushSender = null,
+        private readonly LoggerInterface $logger = new NullLogger(),
     ) {}
 
     public function requestStarted(RequestContext $request): void
@@ -81,6 +91,9 @@ final class EventConsumer
         }
 
         $this->queueManager->publish($this->taskId, $published);
+        if (!$event instanceof Message) {
+            $this->push($event instanceof Task ? ($published->task ?? $event) : $event);
+        }
 
         return $published;
     }
@@ -109,8 +122,23 @@ final class EventConsumer
         $this->finished = true;
         $published = new PublishedEvent($event, self::copy($updated));
         $this->queueManager->publish($this->taskId, $published);
+        $this->push($event);
 
         return $published;
+    }
+
+    private function push(Task|TaskStatusUpdateEvent|TaskArtifactUpdateEvent $event): void
+    {
+        if ($this->pushSender === null) {
+            return;
+        }
+        try {
+            $this->pushSender->sendNotification($this->taskId, $event);
+        } catch (\Throwable $e) {
+            $this->logger->error('Sending push notifications for task {task_id} failed: {message}', [
+                'task_id' => $this->taskId, 'message' => $e->getMessage(), 'exception' => $e,
+            ]);
+        }
     }
 
     private function handleMessage(): void

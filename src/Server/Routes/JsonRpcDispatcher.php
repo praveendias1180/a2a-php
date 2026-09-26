@@ -165,7 +165,7 @@ final class JsonRpcDispatcher implements RequestHandlerInterface
                 return $this->errorResponse($requestId, $e);
             }
 
-            return $this->json(['jsonrpc' => '2.0', 'id' => $requestId, 'result' => $result]);
+            return Common::withActivatedExtensions($this->json(['jsonrpc' => '2.0', 'id' => $requestId, 'result' => $result]), $context);
         } catch (A2AError $e) {
             return $this->errorResponse($requestId, $e);
         } catch (\Throwable $e) {
@@ -201,11 +201,11 @@ final class JsonRpcDispatcher implements RequestHandlerInterface
             }
         };
 
-        return $this->responseFactory->createResponse(200)
+        return Common::withActivatedExtensions($this->responseFactory->createResponse(200)
             ->withHeader('Content-Type', 'text/event-stream')
             ->withHeader('Cache-Control', 'no-cache')
             ->withHeader('X-Accel-Buffering', 'no')
-            ->withBody(new SseStream($chunks(), drainOnDisconnect: $method === 'SendStreamingMessage'));
+            ->withBody(new SseStream($chunks(), drainOnDisconnect: $method === 'SendStreamingMessage')), $context);
     }
 
     private function processNonStreamingRequest(ProtobufMessage $params, ServerCallContext $context): mixed

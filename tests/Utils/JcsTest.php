@@ -19,7 +19,7 @@ use PHPUnit\Framework\TestCase;
  * Python cross-checks numbers against the `rfc8785` package; here the oracle
  * is Node.js (String(x) is ECMAScript Number::toString), used when `node` is on
  * the PATH. Tests that go through Agent Card signing (signer/verifier, the
- * producer-side signature exclusion) wait for the signing port in phase 5.
+ * producer-side signature exclusion) are asserted against Signing.
  */
 final class JcsTest extends TestCase
 {
@@ -57,7 +57,7 @@ final class JcsTest extends TestCase
             self::assertInstanceOf(\stdClass::class, $value);
             $value = clone $value;
             unset($value->signatures);
-            $value = self::cleanEmpty($value);
+            $value = \A2A\Utils\Signing::cleanEmpty($value);
         }
 
         self::assertSame($vector->canonical_utf8_hex, bin2hex(Jcs::canonicalize($value)), self::str($vector->rationale));
@@ -77,7 +77,17 @@ final class JcsTest extends TestCase
     public function testVectorMustReject(\stdClass $vector): void
     {
         if ($vector->group === 'a2-signatures-exclusion') {
-            self::markTestSkipped('Producer-side signature exclusion is asserted with Agent Card signing (phase 5).');
+            // These vectors reject claimed-canonical output that still carries
+            // `signatures`, which is a property of the producer rather than an
+            // input it can be handed; assert the producer side directly, as
+            // Python does.
+            $card = new \A2A\Types\AgentCard(['name' => 'Test Agent', 'description' => 'A test agent', 'version' => '1.0.0']);
+            $card->setSignatures([new \A2A\Types\AgentCardSignature(['protected' => 'abc', 'signature' => 'def'])]);
+            $canonical = json_decode(\A2A\Utils\Signing::canonicalizeAgentCard($card), true, 16, JSON_THROW_ON_ERROR);
+            self::assertIsArray($canonical);
+            self::assertArrayNotHasKey('signatures', $canonical);
+
+            return;
         }
 
         // Lone surrogates and NaN/Infinity: PHP's json_decode already refuses
@@ -395,31 +405,6 @@ final class JcsTest extends TestCase
         self::assertIsString($value);
 
         return $value;
-    }
-
-    /**
-     * Test-side port of a2a-python signing._clean_empty for decoded JSON.
-     */
-    private static function cleanEmpty(mixed $value): mixed
-    {
-        if ($value instanceof \stdClass) {
-            $cleaned = new \stdClass();
-            foreach (get_object_vars($value) as $key => $item) {
-                $item = self::cleanEmpty($item);
-                if ($item !== null) {
-                    $cleaned->{$key} = $item;
-                }
-            }
-
-            return get_object_vars($cleaned) === [] ? null : $cleaned;
-        }
-        if (is_array($value)) {
-            $cleaned = array_values(array_filter(array_map(self::cleanEmpty(...), $value), static fn(mixed $v): bool => $v !== null));
-
-            return $cleaned === [] ? null : $cleaned;
-        }
-
-        return $value === '' ? null : $value;
     }
 
     /**

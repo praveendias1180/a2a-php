@@ -1,5 +1,8 @@
 parameters:
     level: max
+    # Example classes the tests load with require_once.
+    scanFiles:
+        - examples/extensions/TimestampExtension.php
     paths:
         - src
         - tests

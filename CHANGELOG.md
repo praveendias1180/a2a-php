@@ -6,6 +6,24 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Added
+- **Push notifications.** `PushNotificationSender` + `BasePushNotificationSender`: every task update is POSTed to the task's webhooks as a `StreamResponse`, with `Authorization` (from the config's `authentication`), `X-A2A-Notification-Token` and a stable `X-A2A-Notification-Id`; retries network errors, 408, 425, 429 and 5xx with exponential backoff (honours `Retry-After`); never follows redirects. Wired into `DefaultRequestHandler` (`pushSender:`), sent after each update is saved, in order; a failing sender never fails the task.
+- SSRF protection for webhooks: URLs are checked when a config is created and again before every attempt; with Guzzle (ext-curl) or Symfony HttpClient the connection is pinned to the checked address (DNS-rebinding safe). `PushUrlValidator::resolve()` and `allowedHosts` (for a local receiver in development). `HttpRequest` gains `pinnedAddress` and `followRedirects`; `PinsAddresses` marks senders that can pin.
+- `PdoPushNotificationConfigStore` (SQLite, PostgreSQL, MySQL) with optional `encrypt`/`decrypt` closures; `PushNotificationConfigStore::getInfoForDispatch()` (every owner's configs for a task).
+- **Agent Card signing** (`Utils\Signing`, needs `firebase/php-jwt`): `createAgentCardSigner()`, `createSignatureVerifier()`, `canonicalizeAgentCard()`, `cleanEmpty()` and the `SignatureVerificationError` family, ported from Python's `utils/signing.py`. `Routes::agentCard(..., signer:)` / `Routes::router(..., cardSigner:)` serve the card signed (a copy, signed once per process). Cross-SDK check in CI: Python-signed cards verify in PHP and PHP-signed cards verify in Python (ES256, HS256).
+- **Extensions.** Required extensions are enforced (`ExtensionSupportRequiredError` before the executor runs), requested extensions the card declares are activated, and activated extensions are echoed in the `A2A-Extensions` response header on JSON-RPC and HTTP+JSON. `ServerCallContext::$activatedExtensions`, `RequestContext::activatedExtensions()` / `isExtensionActive()` / `activateExtension()`, `Extensions\Common::activatableExtensions()` / `missingRequiredExtensions()`. Example extension: `examples/extensions/TimestampExtension.php`.
+- Laravel: push notifications sent from a queue job (`SendPushNotification`; credentials never enter the queue payload), `a2a.push` config (queue, attempts, backoff, timeout, allowed hosts), webhook URLs checked on create; Agent Card signing via `a2a.signing` (public and extended card).
+- TCK: `tck/sut-agent.php` and the Laravel TCK app take `A2A_SUT_PROFILE` (`minimal`, `full`, `required-extension`); `scripts/run-tck.sh` and `scripts/run-tck-laravel.sh` run every profile, so the push-notification, extended-card and required-extension requirements now run instead of being skipped.
+- Docs: guides for push notifications, card signing and extensions.
+
+### Security
+- The card-signature verifier never uses PEM or OpenSSH public-key material as an HMAC secret, so a card forged with `HS256` and the public key is rejected even when the allow-list mixes HMAC and public-key algorithms (the same guard PyJWT has).
+
+### Changed
+- `PushNotificationConfigStore` gained `getInfoForDispatch()`: custom stores must implement it.
+- `DefaultRequestHandler`'s `pushUrlValidator` also accepts a `PushUrlValidator` instance.
+- The Laravel bridge now checks webhook URLs when a push config is created (private and unresolvable hosts are rejected).
+
 ## [0.2.0] - 2026-09-25
 
 Adds the Laravel bridge, released as `praveendias1180/a2a-laravel` 0.2.0 (both packages are versioned together from here on). The official A2A TCK passes at the MUST level against a queued Laravel app on PHP-FPM + nginx.

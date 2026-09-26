@@ -9,8 +9,9 @@ use A2A\Auth\User;
 
 /**
  * Per-request server state: the authenticated user, free-form state (the
- * request headers live under `headers`), the tenant and the extensions the
- * client asked for.
+ * request headers live under `headers`), the tenant, the extensions the
+ * client asked for, and the ones the agent activated (echoed back in the
+ * `A2A-Extensions` response header).
  *
  * Mirrors a2a-python: ServerCallContext in src/a2a/server/context.py
  */
@@ -19,13 +20,25 @@ final class ServerCallContext
     /**
      * @param array<string, mixed> $state
      * @param list<string>         $requestedExtensions
+     * @param list<string>         $activatedExtensions
      */
     public function __construct(
         public array $state = [],
         public User $user = new UnauthenticatedUser(),
         public string $tenant = '',
         public array $requestedExtensions = [],
+        public array $activatedExtensions = [],
     ) {}
+
+    /**
+     * Marks an extension as active for this request (once).
+     */
+    public function activateExtension(string $uri): void
+    {
+        if (!in_array($uri, $this->activatedExtensions, true)) {
+            $this->activatedExtensions[] = $uri;
+        }
+    }
 
     /**
      * The request headers captured by the context builder, or null when the

@@ -23,6 +23,15 @@ use Psr\Log\NullLogger;
  * stricter: 100.64.0.0/10 (carrier-grade NAT) is blocked, and IPv6 outside
  * global unicast 2000::/3 is blocked outright.
  *
+ * resolve() returns the approved addresses so a sender can connect to
+ * exactly those (BasePushNotificationSender pins them), which closes the
+ * DNS-rebinding window between the check and the connection.
+ *
+ * $allowedHosts exempts exact host names or IP literals from the address
+ * check (e.g. ['localhost', '127.0.0.1'] for a local webhook in development
+ * or tests). They still resolve and still get pinned. Never allow-list a
+ * host a client could point anywhere.
+ *
  * Mirrors a2a-python: validate_push_notification_url() in
  * src/a2a/utils/push_url_validator.py. Usable as a callable.
  */
@@ -55,15 +64,25 @@ final class PushUrlValidator
     /** @var \Closure(string): list<string> */
     private readonly \Closure $resolver;
 
+    /** @var array<string, true> lower-cased host => true */
+    private readonly array $allowedHosts;
+
     /**
      * @param (callable(string): list<string>)|null $resolver maps a host name to its IP addresses;
      *                                                        throw or return [] when it does not resolve
+     * @param list<string>                         $allowedHosts host names or IP literals exempt from the address check
      */
     public function __construct(
         ?callable $resolver = null,
         private readonly LoggerInterface $logger = new NullLogger(),
+        array $allowedHosts = [],
     ) {
         $this->resolver = $resolver !== null ? \Closure::fromCallable($resolver) : self::systemResolver(...);
+        $allowed = [];
+        foreach ($allowedHosts as $host) {
+            $allowed[strtolower(trim($host, '[]'))] = true;
+        }
+        $this->allowedHosts = $allowed;
     }
 
     public function __invoke(string $url): bool
@@ -76,24 +95,35 @@ final class PushUrlValidator
      */
     public function validate(string $url): bool
     {
+        return $this->resolve($url) !== null;
+    }
+
+    /**
+     * The addresses the URL's host resolves to when every one of them is
+     * allowed, or null when the URL must not be used.
+     *
+     * @return list<string>|null
+     */
+    public function resolve(string $url): ?array
+    {
         // parse_url() returns false for out-of-range ports such as :99999.
         $parts = parse_url($url);
         if ($parts === false) {
             $this->logger->warning('Push-notification URL is unparseable: {url}', ['url' => $url]);
 
-            return false;
+            return null;
         }
         $scheme = strtolower($parts['scheme'] ?? '');
         if ($scheme !== 'http' && $scheme !== 'https') {
             $this->logger->warning('Push-notification URL scheme {scheme} is not http/https: {url}', ['scheme' => $scheme, 'url' => $url]);
 
-            return false;
+            return null;
         }
         $host = trim($parts['host'] ?? '', '[]');
         if ($host === '') {
             $this->logger->warning('Push-notification URL has no hostname: {url}', ['url' => $url]);
 
-            return false;
+            return null;
         }
 
         try {
@@ -104,18 +134,22 @@ final class PushUrlValidator
         if ($addresses === []) {
             $this->logger->warning('Push-notification host {host} could not be resolved: {url}', ['host' => $host, 'url' => $url]);
 
-            return false;
+            return null;
+        }
+
+        if (isset($this->allowedHosts[strtolower($host)])) {
+            return $addresses;
         }
 
         foreach ($addresses as $address) {
             if (self::isBlocked($address)) {
                 $this->logger->warning('Push-notification host {host} resolves to a non-public address: {url}', ['host' => $host, 'url' => $url]);
 
-                return false;
+                return null;
             }
         }
 
-        return true;
+        return $addresses;
     }
 
     /**

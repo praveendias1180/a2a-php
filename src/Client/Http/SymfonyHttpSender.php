@@ -15,7 +15,7 @@ use Symfony\Contracts\HttpClient\ResponseInterface;
  * adapter). stream() uses HttpClientInterface::stream(), so SSE events are
  * delivered as they arrive.
  */
-final class SymfonyHttpSender implements HttpSender
+final class SymfonyHttpSender implements HttpSender, PinsAddresses
 {
     public function __construct(private readonly HttpClientInterface $client) {}
 
@@ -74,6 +74,11 @@ final class SymfonyHttpSender implements HttpSender
         return true;
     }
 
+    public function pinsAddresses(): bool
+    {
+        return true;
+    }
+
     private function request(HttpRequest $request): ResponseInterface
     {
         $options = ['headers' => $request->headers];
@@ -83,6 +88,15 @@ final class SymfonyHttpSender implements HttpSender
         if ($request->timeout !== null) {
             $options['timeout'] = $request->timeout;
             $options['max_duration'] = $request->timeout;
+        }
+        if (!$request->followRedirects) {
+            $options['max_redirects'] = 0;
+        }
+        if ($request->pinnedAddress !== null) {
+            $host = parse_url($request->url, \PHP_URL_HOST);
+            if (is_string($host) && $host !== '') {
+                $options['resolve'] = [trim($host, '[]') => $request->pinnedAddress];
+            }
         }
 
         try {

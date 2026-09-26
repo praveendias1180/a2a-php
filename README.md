@@ -9,7 +9,7 @@ A PHP implementation of the [A2A (Agent2Agent) protocol](https://a2a-protocol.or
 
 📖 **Documentation: <https://praveendias1180.github.io/a2a-php/>**
 
-> **Status: early development (phase 5 of 7).** The wire types, utilities, client, server and Laravel bridge are done. The server passes the official A2A TCK (plain PHP, and a Laravel app running executors on queue workers), and the SDK interoperates with the official Python SDK in both directions. Push notifications and card signing are next. The API may still change before 1.0. See the [roadmap](#roadmap).
+> **Status: early development (phase 6 of 7).** The wire types, utilities, client, server, Laravel bridge, push notifications, Agent Card signing and extensions are done. The server passes the official A2A TCK (plain PHP, and a Laravel app running executors on queue workers), and the SDK interoperates with the official Python SDK in both directions, including card signatures. A2A 0.3 compatibility is next. The API may still change before 1.0. See the [roadmap](#roadmap).
 
 ## Packages
 
@@ -141,7 +141,7 @@ That mounts the Agent Card, JSON-RPC and HTTP+JSON. Set `A2A_RUNNER=queued` and 
 | 2 | Client (JSON-RPC + REST + SSE) | ✅ |
 | 3 | Server core | ✅ |
 | 4 | Laravel bridge | ✅ |
-| 5 | Push notifications, card signing, extensions (the PDO stores arrived early, in phase 3) | the TCK passes at the SHOULD level |
+| 5 | Push notifications, card signing, extensions (the PDO stores arrived early, in phase 3) | ✅ |
 | 6 | v0.3 compatibility | a 0.3 client works against a 1.0 server |
 | 7 | 1.0.0 | stable release |
 

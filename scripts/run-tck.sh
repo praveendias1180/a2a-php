@@ -17,7 +17,15 @@
 # request, and that connection then waits for the whole stream even while
 # other workers are idle. The TCK's multi-stream tests hit exactly that.
 #
-# Env: A2A_TCK_PORT (default 9999), A2A_TCK_SERVER (fpm | php-s, default fpm),
+# The TCK runs once per SUT profile (A2A_SUT_PROFILE in tck/sut-agent.php),
+# each against a fresh server and database, because some requirements are
+# mutually exclusive: `minimal` (streaming only), `full` (+ push
+# notifications and a declared-but-unconfigured extended card) and
+# `required-extension` (only the CORE-CAP-004 tests, since the TCK client
+# never sends A2A-Extensions). The script fails if any profile fails.
+#
+# Env: A2A_TCK_PROFILES (default "minimal full required-extension"),
+#      A2A_TCK_PORT (default 9999), A2A_TCK_SERVER (fpm | php-s, default fpm),
 #      A2A_TCK_WORKERS (FPM children / php -S workers, default 16; the full
 #      MUST suite has at most 4 requests in flight),
 #      PHP_FPM (php-fpm binary; default: php-fpm<version> or php-fpm on PATH or in /usr/sbin),
@@ -34,20 +42,26 @@ if [ "${1:-}" = "--" ]; then shift; fi
 port="${A2A_TCK_PORT:-9999}"
 server="${A2A_TCK_SERVER:-fpm}"
 workers="${A2A_TCK_WORKERS:-16}"
-run_dir="$(mktemp -d)"
-db="$run_dir/sut.sqlite"
+profiles="${A2A_TCK_PROFILES:-minimal full required-extension}"
+run_dir=""
+db=""
+profile=""
 pids=()
 
-cleanup() {
+stop_server() {
     for pid in "${pids[@]}"; do
         kill -- "-$pid" 2>/dev/null || kill "$pid" 2>/dev/null || true
     done
     for pid in "${pids[@]}"; do
         wait "$pid" 2>/dev/null || true
     done
-    rm -rf "$run_dir"
+    pids=()
+    if [ -n "$run_dir" ]; then
+        rm -rf "$run_dir"
+    fi
+    run_dir=""
 }
-trap cleanup EXIT
+trap stop_server EXIT
 
 find_php_fpm() {
     if [ -n "${PHP_FPM:-}" ]; then
@@ -85,6 +99,7 @@ pm.max_children = $workers
 catch_workers_output = yes
 clear_env = yes
 env[A2A_SUT_DB] = $db
+env[A2A_SUT_PROFILE] = $profile
 env[SUT_HOST] = 127.0.0.1:$port
 php_admin_value[max_execution_time] = 0
 EOF
@@ -133,36 +148,64 @@ EOF
 
 start_php_s() {
     set -m
-    A2A_SUT_DB="$db" SUT_HOST="127.0.0.1:${port}" PHP_CLI_SERVER_WORKERS="$workers" \
+    A2A_SUT_DB="$db" A2A_SUT_PROFILE="$profile" SUT_HOST="127.0.0.1:${port}" PHP_CLI_SERVER_WORKERS="$workers" \
         php -S "127.0.0.1:${port}" tck/sut-agent.php >"$run_dir/php-s.log" 2>&1 &
     pids+=("$!")
     set +m
 }
 
-case "$server" in
-    fpm) start_fpm ;;
-    php-s) start_php_s ;;
-    *) echo "Unknown A2A_TCK_SERVER '$server' (use fpm or php-s)" >&2; exit 1 ;;
-esac
+start_server() {
+    run_dir="$(mktemp -d)"
+    db="$run_dir/sut.sqlite"
+    case "$server" in
+        fpm) start_fpm ;;
+        php-s) start_php_s ;;
+        *) echo "Unknown A2A_TCK_SERVER '$server' (use fpm or php-s)" >&2; exit 1 ;;
+    esac
 
-card_url="http://127.0.0.1:${port}/.well-known/agent-card.json"
-for _ in $(seq 1 40); do
-    curl -sf -o /dev/null "$card_url" && break
-    sleep 0.5
+    local card_url="http://127.0.0.1:${port}/.well-known/agent-card.json"
+    for _ in $(seq 1 40); do
+        curl -sf -o /dev/null "$card_url" && break
+        sleep 0.5
+    done
+    if ! curl -sf -o /dev/null "$card_url"; then
+        echo "The PHP SUT did not start ($server, profile $profile):" >&2
+        tail -n +1 "$run_dir"/*.log "$run_dir"/*.out 2>/dev/null >&2 || true
+        exit 1
+    fi
+}
+
+extra=("$@")
+failed=()
+for profile in $profiles; do
+    echo "=== A2A TCK: level $level, SUT profile $profile ==="
+    start_server
+    args=(--sut-host "http://127.0.0.1:${port}" --transport jsonrpc,http_json)
+    if [ "$level" != "all" ]; then
+        args+=(--level "$level")
+    fi
+    pytest_args=("${extra[@]}")
+    if [ "$profile" = "required-extension" ]; then
+        pytest_args+=(-k required_extension)
+    fi
+    if [ "${#pytest_args[@]}" -gt 0 ]; then
+        args+=(-- "${pytest_args[@]}")
+    fi
+    status=0
+    (cd "$tck_dir" && python3 run_tck.py "${args[@]}") || status=$?
+    # Keep each profile's report (the TCK overwrites reports/ on every run).
+    if [ -f "$tck_dir/reports/junitreport.xml" ]; then
+        cp "$tck_dir/reports/junitreport.xml" "$tck_dir/reports/junitreport-${level}-${profile}.xml"
+    fi
+    # pytest exits 5 when a -k filter selects nothing at this level.
+    if [ "$status" -ne 0 ] && [ "$status" -ne 5 ]; then
+        failed+=("$profile")
+    fi
+    stop_server
 done
-if ! curl -sf -o /dev/null "$card_url"; then
-    echo "The PHP SUT did not start ($server):" >&2
-    tail -n +1 "$run_dir"/*.log "$run_dir"/*.out 2>/dev/null >&2 || true
+
+if [ "${#failed[@]}" -gt 0 ]; then
+    echo "A2A TCK failed for SUT profile(s): ${failed[*]}" >&2
     exit 1
 fi
-
-args=(--sut-host "http://127.0.0.1:${port}" --transport jsonrpc,http_json)
-if [ "$level" != "all" ]; then
-    args+=(--level "$level")
-fi
-if [ "$#" -gt 0 ]; then
-    args+=(-- "$@")
-fi
-
-cd "$tck_dir"
-python3 run_tck.py "${args[@]}"
+echo "A2A TCK passed for SUT profile(s): $profiles"

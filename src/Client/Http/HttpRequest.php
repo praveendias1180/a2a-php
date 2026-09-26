@@ -15,7 +15,13 @@ final class HttpRequest
 {
     /**
      * @param array<string, string> $headers
-     * @param float|null            $timeout seconds; null means the client's default
+     * @param float|null            $timeout       seconds; null means the client's default
+     * @param string|null           $pinnedAddress connect to this IP address for the URL's host instead
+     *                                             of resolving it again (senders that implement
+     *                                             PinsAddresses honour it; others ignore it)
+     * @param bool                  $followRedirects false for requests to client-supplied URLs (push
+     *                                               webhooks), where a redirect could lead past the
+     *                                               SSRF check
      */
     public function __construct(
         public readonly string $method,
@@ -23,6 +29,8 @@ final class HttpRequest
         public readonly array $headers = [],
         public readonly ?string $body = null,
         public readonly ?float $timeout = null,
+        public readonly ?string $pinnedAddress = null,
+        public readonly bool $followRedirects = true,
     ) {}
 
     /**
@@ -37,6 +45,6 @@ final class HttpRequest
             }
         }
 
-        return new self($this->method, $this->url, $this->headers + [$name => $value], $this->body, $this->timeout);
+        return new self($this->method, $this->url, $this->headers + [$name => $value], $this->body, $this->timeout, $this->pinnedAddress, $this->followRedirects);
     }
 }

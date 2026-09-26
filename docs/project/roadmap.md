@@ -9,7 +9,7 @@ Each phase ends with a check that proves it's done. Versions stay at `0.x` until
 | 2 | **Client**: JSON-RPC + REST + SSE | ✅ tested in CI against the official Python sample server |
 | 3 | **Server core** + inline runner | ✅ the [A2A TCK](https://github.com/a2aproject/a2a-tck) passes at the MUST level (and SHOULD and MAY); see [Conformance](../reference/conformance.md) |
 | 4 | **Laravel bridge** + queued runner | ✅ the TCK passes (MUST, SHOULD, MAY) against a Laravel app on PHP-FPM + nginx whose executors run on queue workers; see [Conformance](../reference/conformance.md#laravel-bridge) |
-| 5 | **Push notifications, card signing, extensions** (PDO task store and queue manager arrived early, in phase 3) | the TCK passes at the SHOULD level |
+| 5 | **Push notifications, card signing, extensions** (PDO task store and queue manager arrived early, in phase 3) | ✅ the push-notification, extended-card and required-extension TCK requirements run and pass (MUST 161 distinct tests, SHOULD, MAY, 0 failures; plain PHP and Laravel), and card signatures verify across the PHP and Python SDKs; see [Conformance](../reference/conformance.md) |
 | 6 | **A2A 0.3 compatibility** | a 0.3 client works against a 1.0 server |
 | 7 | **1.0.0** | stable release |
 | 8 | Later | gRPC client, long-running runners, OpenTelemetry |

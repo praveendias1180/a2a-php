@@ -164,6 +164,36 @@ final class RequestContext
     }
 
     /**
+     * The extensions active for this request: the requested ones the card
+     * declares (activated by the SDK), plus any the executor activated.
+     *
+     * @return list<string>
+     */
+    public function activatedExtensions(): array
+    {
+        return $this->callContext->activatedExtensions;
+    }
+
+    /**
+     * Whether an extension is active for this request.
+     */
+    public function isExtensionActive(string $uri): bool
+    {
+        return in_array($uri, $this->callContext->activatedExtensions, true);
+    }
+
+    /**
+     * Activates an extension for this request. On unary responses it is
+     * echoed in the `A2A-Extensions` header; a streaming response has
+     * already sent its headers by the time execute() runs, so there it only
+     * affects the executor's own behaviour.
+     */
+    public function activateExtension(string $uri): void
+    {
+        $this->callContext->activateExtension($uri);
+    }
+
+    /**
      * True once the task was cancelled, even by a request in another
      * process. Check it in long loops and stop early. PHP-specific.
      */

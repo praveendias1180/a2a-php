@@ -18,7 +18,12 @@
 # 127.0.0.1 and is stopped on exit: nginx, PHP-FPM, the queue workers and,
 # unless A2A_REDIS_HOST is set, a private redis-server.
 #
-# Env: A2A_TCK_PORT (default 9998), A2A_FPM_CHILDREN (default 16),
+# Like scripts/run-tck.sh, the TCK runs once per SUT profile (minimal, full,
+# required-extension; see tck/sut-agent.php), restarting PHP-FPM and the
+# queue workers in between. `long-task` uses the minimal profile.
+#
+# Env: A2A_TCK_PROFILES (default "minimal full required-extension"),
+#      A2A_TCK_PORT (default 9998), A2A_FPM_CHILDREN (default 16),
 #      A2A_QUEUE_WORKERS (default 8), A2A_EVENTS_DRIVER (redis | database;
 #      default redis when Redis is available),
 #      A2A_REDIS_HOST / A2A_REDIS_PORT (use an existing Redis, e.g. a CI
@@ -39,16 +44,23 @@ port="${A2A_TCK_PORT:-9998}"
 children="${A2A_FPM_CHILDREN:-16}"
 queue_workers="${A2A_QUEUE_WORKERS:-8}"
 app="${A2A_LARAVEL_APP:-$repo/build/tck-laravel-app}"
+profiles="${A2A_TCK_PROFILES:-minimal full required-extension}"
+if [ "$level" = "long-task" ]; then profiles=minimal; fi
 run_dir="$(mktemp -d)"
 pids=()
 
-cleanup() {
+stop_services() {
     for pid in "${pids[@]}"; do
         kill -- "-$pid" 2>/dev/null || kill "$pid" 2>/dev/null || true
     done
     for pid in "${pids[@]}"; do
         wait "$pid" 2>/dev/null || true
     done
+    pids=()
+}
+
+cleanup() {
+    stop_services
     if [ -f "$run_dir/redis.pid" ]; then
         kill "$(cat "$run_dir/redis.pid")" 2>/dev/null || true
     fi
@@ -130,11 +142,13 @@ fi
     sed -i "s#'keep_alive' => [0-9.]*,#'keep_alive' => 2.0,#; s#'max_idle' => null,#'max_idle' => 12.0,#" config/a2a.php
 )
 
-# --- PHP-FPM + nginx -----------------------------------------------------------
-fpm="$(find_php_fpm)"
-nginx="${NGINX:-nginx}"
-mkdir -p "$run_dir/nginx-temp"
-cat >"$run_dir/php-fpm.conf" <<EOF
+start_services() {
+    local profile="$1"
+    # --- PHP-FPM + nginx -----------------------------------------------------------
+    fpm="$(find_php_fpm)"
+    nginx="${NGINX:-nginx}"
+    mkdir -p "$run_dir/nginx-temp"
+    cat >"$run_dir/php-fpm.conf" <<EOF
 [global]
 pid = $run_dir/php-fpm.pid
 error_log = $run_dir/php-fpm.log
@@ -146,9 +160,10 @@ pm = static
 pm.max_children = $children
 catch_workers_output = yes
 clear_env = no
+env[A2A_SUT_PROFILE] = $profile
 php_admin_value[max_execution_time] = 0
 EOF
-cat >"$run_dir/nginx.conf" <<EOF
+    cat >"$run_dir/nginx.conf" <<EOF
 worker_processes 1;
 daemon off;
 pid $run_dir/nginx.pid;
@@ -185,42 +200,69 @@ http {
 }
 EOF
 
-set -m
-"$fpm" --nodaemonize --fpm-config "$run_dir/php-fpm.conf" >"$run_dir/php-fpm.out" 2>&1 &
-pids+=("$!")
-"$nginx" -p "$run_dir" -e "$run_dir/nginx-error.log" -c "$run_dir/nginx.conf" >"$run_dir/nginx.out" 2>&1 &
-pids+=("$!")
-for i in $(seq 1 "$queue_workers"); do
-    (cd "$app" && exec php artisan queue:work --sleep=0.05 --timeout=600 --tries=1 >"$run_dir/worker-$i.log" 2>&1) &
+    set -m
+    "$fpm" --nodaemonize --fpm-config "$run_dir/php-fpm.conf" >"$run_dir/php-fpm.out" 2>&1 &
     pids+=("$!")
-done
-set +m
+    "$nginx" -p "$run_dir" -e "$run_dir/nginx-error.log" -c "$run_dir/nginx.conf" >"$run_dir/nginx.out" 2>&1 &
+    pids+=("$!")
+    for i in $(seq 1 "$queue_workers"); do
+        (cd "$app" && A2A_SUT_PROFILE="$profile" exec php artisan queue:work --sleep=0.05 --timeout=600 --tries=1 >"$run_dir/worker-$i.log" 2>&1) &
+        pids+=("$!")
+    done
+    set +m
 
-card_url="http://127.0.0.1:${port}/.well-known/agent-card.json"
-for _ in $(seq 1 40); do
-    curl -sf -o /dev/null "$card_url" && break
-    sleep 0.5
+    card_url="http://127.0.0.1:${port}/.well-known/agent-card.json"
+    for _ in $(seq 1 40); do
+        curl -sf -o /dev/null "$card_url" && break
+        sleep 0.5
+    done
+    if ! curl -sf -o /dev/null "$card_url"; then
+        echo "The Laravel SUT did not start:" >&2
+        tail -n +1 "$run_dir"/*.log "$run_dir"/*.out "$app/storage/logs/laravel.log" 2>/dev/null >&2 || true
+        exit 1
+    fi
+    echo "Laravel SUT on $card_url (profile: $profile, events: $events, queue: $queue_driver, $queue_workers workers, $children FPM children)"
+
+}
+
+extra=("$@")
+failed=()
+for profile in $profiles; do
+    echo "=== A2A TCK (Laravel): level $level, SUT profile $profile ==="
+    start_services "$profile"
+
+    if [ "$level" = "long-task" ]; then
+        (cd "$app" && php "$repo/scripts/tck-laravel/long-task-proof.php" "http://127.0.0.1:${port}")
+        echo "queue worker pids: $(pgrep -d ' ' -f "artisan queue:work --sleep=0.05 --timeout=600" || true)"
+        exit 0
+    fi
+
+    args=(--sut-host "http://127.0.0.1:${port}" --transport jsonrpc,http_json)
+    if [ "$level" != "all" ]; then
+        args+=(--level "$level")
+    fi
+    pytest_args=("${extra[@]}")
+    if [ "$profile" = "required-extension" ]; then
+        pytest_args+=(-k required_extension)
+    fi
+    if [ "${#pytest_args[@]}" -gt 0 ]; then
+        args+=(-- "${pytest_args[@]}")
+    fi
+    status=0
+    (cd "$tck_dir" && python3 run_tck.py "${args[@]}") || status=$?
+    # Keep each profile's report (the TCK overwrites reports/ on every run).
+    if [ -f "$tck_dir/reports/junitreport.xml" ]; then
+        cp "$tck_dir/reports/junitreport.xml" "$tck_dir/reports/junitreport-${level}-${profile}.xml"
+    fi
+    # pytest exits 5 when a -k filter selects nothing at this level.
+    if [ "$status" -ne 0 ] && [ "$status" -ne 5 ]; then
+        failed+=("$profile")
+    fi
+    stop_services
 done
-if ! curl -sf -o /dev/null "$card_url"; then
-    echo "The Laravel SUT did not start:" >&2
-    tail -n +1 "$run_dir"/*.log "$run_dir"/*.out "$app/storage/logs/laravel.log" 2>/dev/null >&2 || true
+
+if [ "${#failed[@]}" -gt 0 ]; then
+    echo "A2A TCK (Laravel) failed for SUT profile(s): ${failed[*]}" >&2
     exit 1
 fi
-echo "Laravel SUT on $card_url (events: $events, queue: $queue_driver, $queue_workers workers, $children FPM children)"
-
-if [ "$level" = "long-task" ]; then
-    (cd "$app" && php "$repo/scripts/tck-laravel/long-task-proof.php" "http://127.0.0.1:${port}")
-    echo "queue worker pids: $(pgrep -d ' ' -f "artisan queue:work --sleep=0.05 --timeout=600" || true)"
-    exit 0
-fi
-
-args=(--sut-host "http://127.0.0.1:${port}" --transport jsonrpc,http_json)
-if [ "$level" != "all" ]; then
-    args+=(--level "$level")
-fi
-if [ "$#" -gt 0 ]; then
-    args+=(-- "$@")
-fi
-
-cd "$tck_dir"
-python3 run_tck.py "${args[@]}"
+echo "A2A TCK (Laravel) passed for SUT profile(s): $profiles"

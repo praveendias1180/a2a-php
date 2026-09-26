@@ -16,6 +16,12 @@ use Illuminate\Support\ServiceProvider;
  */
 final class A2ATckServiceProvider extends ServiceProvider
 {
+    public function register(): void
+    {
+        // The TCK's webhook receiver listens on localhost.
+        config(['a2a.push.allowed_hosts' => ['localhost', '127.0.0.1', '::1']]);
+    }
+
     public function boot(): void
     {
         require_once app_path('A2A/TckAgentExecutor.php');

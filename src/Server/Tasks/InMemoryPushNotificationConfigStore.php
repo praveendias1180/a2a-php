@@ -51,6 +51,18 @@ final class InMemoryPushNotificationConfigStore implements PushNotificationConfi
         return array_values($this->configs[$owner][$taskId] ?? []);
     }
 
+    public function getInfoForDispatch(string $taskId): array
+    {
+        $configs = [];
+        foreach ($this->configs as $tasks) {
+            foreach ($tasks[$taskId] ?? [] as $config) {
+                $configs[] = $config;
+            }
+        }
+
+        return $configs;
+    }
+
     public function deleteInfo(string $taskId, ServerCallContext $context, ?string $configId = null): void
     {
         $owner = ($this->ownerResolver)($context);

@@ -130,7 +130,7 @@ final class RestDispatcher implements RequestHandlerInterface
 
             $result = $this->dispatch($name, $request, $args, $context);
 
-            return $this->json($result);
+            return Common::withActivatedExtensions($this->json($result), $context);
         } catch (\Throwable $e) {
             $this->logError($e);
 
@@ -232,11 +232,11 @@ final class RestDispatcher implements RequestHandlerInterface
             }
         };
 
-        return $this->responseFactory->createResponse(200)
+        return Common::withActivatedExtensions($this->responseFactory->createResponse(200)
             ->withHeader('Content-Type', 'text/event-stream')
             ->withHeader('Cache-Control', 'no-cache')
             ->withHeader('X-Accel-Buffering', 'no')
-            ->withBody(new SseStream($chunks(), drainOnDisconnect: $name === 'messageStream'));
+            ->withBody(new SseStream($chunks(), drainOnDisconnect: $name === 'messageStream')), $context);
     }
 
     /**

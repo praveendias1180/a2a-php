@@ -6,6 +6,7 @@ namespace A2A\Server\AgentExecution;
 
 use A2A\Server\Events\QueueManager;
 use A2A\Server\ServerCallContext;
+use A2A\Server\Tasks\PushNotificationSender;
 use A2A\Server\Tasks\TaskManager;
 use A2A\Server\Tasks\TaskStore;
 use A2A\Types\Message;
@@ -28,6 +29,7 @@ final class ActiveTaskRegistry
         private readonly TaskStore $taskStore,
         private readonly QueueManager $queueManager,
         private readonly LoggerInterface $logger = new NullLogger(),
+        private readonly ?PushNotificationSender $pushSender = null,
     ) {}
 
     public function create(
@@ -42,6 +44,7 @@ final class ActiveTaskRegistry
             new TaskManager($this->taskStore, $callContext, $taskId, $contextId, $initialMessage),
             $this->queueManager,
             $this->logger,
+            $this->pushSender,
         );
     }
 }

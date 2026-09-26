@@ -157,4 +157,4 @@ The same server answers the official Python SDK client, the A2A test kit, and an
 | `QueueManager` | `InMemoryQueueManager` | `PdoQueueManager`; the Laravel bridge adds `RedisQueueManager` (Redis Streams) |
 | `TaskRunner` | `InlineTaskRunner` (runs in the request) | the Laravel bridge adds `QueuedTaskRunner` (runs on a queue worker) |
 | `ServerCallContextBuilder` | reads the `a2a.user` request attribute | your own, to plug in authentication |
-| `PushNotificationConfigStore` | none (push is off) | `InMemoryPushNotificationConfigStore`; sending arrives in phase 5 |
+| `PushNotificationConfigStore` | none (push is off) | `PdoPushNotificationConfigStore`, `InMemoryPushNotificationConfigStore`; pass a `pushSender` too (see [Push notifications](../guides/push-notifications.md)) |

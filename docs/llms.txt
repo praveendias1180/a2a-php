@@ -1,6 +1,6 @@
 # A2A PHP SDK
 
-> PHP SDK for the A2A (Agent2Agent) protocol, version 1.0. Same classes and layout as the official Python SDK (a2aproject/a2a-python), with camelCase methods. Framework-agnostic core on PSR-7/15/17/18, plus a Laravel bridge. Package: praveendias1180/a2a-php (Composer). Status: early development (0.x); client and server are done, the server passes the official A2A TCK (MUST, SHOULD and MAY over JSON-RPC and HTTP+JSON) and interoperates with the official Python SDK both ways. Laravel bridge: praveendias1180/a2a-laravel (Route::a2a, queued execution on queue workers with live SSE, Redis Streams or database event log); a Laravel app on PHP-FPM + nginx with the queued runner also passes the TCK MUST level.
+> PHP SDK for the A2A (Agent2Agent) protocol, version 1.0. Same classes and layout as the official Python SDK (a2aproject/a2a-python), with camelCase methods. Framework-agnostic core on PSR-7/15/17/18, plus a Laravel bridge. Package: praveendias1180/a2a-php (Composer). Status: early development (0.x); client and server are done, the server passes the official A2A TCK (MUST, SHOULD and MAY over JSON-RPC and HTTP+JSON) and interoperates with the official Python SDK both ways. Push notifications (webhooks with SSRF protection and retries), Agent Card signing (JWS over RFC 8785, interoperable with the Python SDK) and extension negotiation are supported. Laravel bridge: praveendias1180/a2a-laravel (Route::a2a, queued execution on queue workers with live SSE, Redis Streams or database event log); a Laravel app on PHP-FPM + nginx with the queued runner also passes the TCK MUST level.
 
 Key facts:
 
@@ -23,6 +23,10 @@ Key facts:
 - [Laravel: queued execution](https://praveendias1180.github.io/a2a-php/guides/laravel-queues/): QueuedTaskRunner, Horizon/supervisor, cancellation, Redis vs database events
 - [Laravel: streaming behind nginx](https://praveendias1180.github.io/a2a-php/guides/laravel-sse-nginx/)
 - [Laravel: storage and pruning](https://praveendias1180.github.io/a2a-php/guides/laravel-storage/)
+
+- [Push notifications](https://praveendias1180.github.io/a2a-php/guides/push-notifications/): webhooks, SSRF protection, retries
+- [Signing the Agent Card](https://praveendias1180.github.io/a2a-php/guides/card-signing/): JWS over the canonical card, verification
+- [Extensions](https://praveendias1180.github.io/a2a-php/guides/extensions/): declaring, activating, required extensions
 
 ## Reference
 

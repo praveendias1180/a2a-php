@@ -17,6 +17,14 @@ use Psr\Http\Server\RequestHandlerInterface;
  * caching headers the spec recommends (section 8.6): Cache-Control with
  * max-age, an ETag and Last-Modified, and 304 for a matching If-None-Match.
  *
+ * With a $signer (Signing::createAgentCardSigner()), the card is served
+ * signed. The signer gets a copy, applied after $cardModifier, so
+ * signatures never accumulate on the configured card; without a modifier
+ * the signed card is computed once per process. ECDSA/RSA-PSS signatures
+ * differ on each signing, so under PHP-FPM each worker's ETag differs; to
+ * serve identical bytes everywhere, sign once at deploy time and pass the
+ * already-signed card instead.
+ *
  * Mirrors a2a-python: create_agent_card_routes() in
  * src/a2a/server/routes/agent_card_routes.py. Python also merges v0.3
  * compat fields into the card; that arrives with the compat layer
@@ -33,12 +41,15 @@ final class AgentCardHandler implements RequestHandlerInterface
     /**
      * @param (\Closure(AgentCard): AgentCard)|null $cardModifier
      */
+    private ?AgentCard $signedCard = null;
+
     public function __construct(
         private readonly AgentCard $agentCard,
         private readonly ?\Closure $cardModifier = null,
         private readonly int $maxAgeSeconds = 300,
         ?ResponseFactoryInterface $responseFactory = null,
         ?StreamFactoryInterface $streamFactory = null,
+        private readonly ?\Closure $signer = null,
     ) {
         $factory = new Psr17Factory();
         $this->responseFactory = $responseFactory ?? $factory;
@@ -51,7 +62,7 @@ final class AgentCardHandler implements RequestHandlerInterface
 
     public function handle(ServerRequestInterface $request): ResponseInterface
     {
-        $card = $this->cardModifier !== null ? ($this->cardModifier)($this->agentCard) : $this->agentCard;
+        $card = $this->cardToServe();
         $body = Common::encode(Common::toJsonValue($card));
         $etag = '"' . substr(hash('sha256', $body), 0, 32) . '"';
 
@@ -68,5 +79,36 @@ final class AgentCardHandler implements RequestHandlerInterface
         return $response
             ->withHeader('Content-Type', 'application/json')
             ->withBody($this->streamFactory->createStream($body));
+    }
+
+    private function cardToServe(): AgentCard
+    {
+        if ($this->signer === null) {
+            return $this->cardModifier !== null ? self::expectCard(($this->cardModifier)($this->agentCard)) : $this->agentCard;
+        }
+        if ($this->cardModifier === null && $this->signedCard !== null) {
+            return $this->signedCard;
+        }
+
+        $copy = new AgentCard();
+        $copy->mergeFrom($this->agentCard);
+        if ($this->cardModifier !== null) {
+            $copy = self::expectCard(($this->cardModifier)($copy));
+        }
+        $signed = self::expectCard(($this->signer)($copy));
+        if ($this->cardModifier === null) {
+            $this->signedCard = $signed;
+        }
+
+        return $signed;
+    }
+
+    private static function expectCard(mixed $card): AgentCard
+    {
+        if (!$card instanceof AgentCard) {
+            throw new \UnexpectedValueException(sprintf('The card modifier and signer must return an AgentCard, got %s.', get_debug_type($card)));
+        }
+
+        return $card;
     }
 }

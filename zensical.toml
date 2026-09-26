@@ -22,6 +22,9 @@ nav = [
     { "Laravel: queued execution" = "guides/laravel-queues.md" },
     { "Laravel: streaming behind nginx" = "guides/laravel-sse-nginx.md" },
     { "Laravel: storage and pruning" = "guides/laravel-storage.md" },
+    { "Push notifications" = "guides/push-notifications.md" },
+    { "Signing the Agent Card" = "guides/card-signing.md" },
+    { "Extensions" = "guides/extensions.md" },
   ] },
   { "Concepts" = [
     { "A2A in five minutes" = "concepts/a2a-in-five-minutes.md" },
