@@ -16,4 +16,5 @@
 /buf.gen.yaml       export-ignore
 /phpstan.neon.dist  export-ignore
 /phpunit.xml.dist   export-ignore
+/proto              export-ignore
 /scripts            export-ignore

@@ -65,6 +65,12 @@ jobs:
       - run: pip install -r tests/Interop/python/requirements.txt
       - name: PHP client -> Python server, and Python client -> PHP server (JSON-RPC + HTTP+JSON)
         run: scripts/run-python-interop.sh
+      - name: The A2A v0.3 SDK (a2a-sdk 0.3.x) in its own venv
+        run: |
+          python -m venv .venv-a2a-v03
+          .venv-a2a-v03/bin/pip install -r tests/Interop/python/requirements-v03.txt
+      - name: A2A v0.3 in both directions (PHP client -> v0.3 server, v0.3 client -> PHP server)
+        run: A2A_PYTHON_V03="$PWD/.venv-a2a-v03/bin/python" scripts/run-python-interop-v03.sh
 
   tck:
     name: A2A TCK (JSON-RPC + HTTP+JSON)
@@ -157,6 +163,11 @@ jobs:
         run: A2A_TCK_DIR="$PWD/a2a-tck" scripts/run-tck-laravel.sh should
       - name: A 20 s task streams live from a queue worker and outlives its request
         run: scripts/run-tck-laravel.sh long-task
+      - name: An A2A v0.3 client against the Laravel app (a2a.v0_3_compat)
+        run: |
+          python -m venv .venv-a2a-v03
+          .venv-a2a-v03/bin/pip install -r tests/Interop/python/requirements-v03.txt
+          A2A_PYTHON_V03="$PWD/.venv-a2a-v03/bin/python" scripts/run-tck-laravel.sh v03-interop
       - uses: actions/upload-artifact@v4
         if: always()
         with:

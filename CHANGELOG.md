@@ -7,6 +7,13 @@ All notable changes to this project are documented here. The format follows
 ## [Unreleased]
 
 ### Added
+- **A2A 0.3 compatibility** (`A2A\Compat\V0_3`, a port of Python's `a2a.compat.v0_3`).
+  - **Client:** `ClientFactory` uses `CompatJsonRpcTransport` / `CompatRestTransport` for a v0.3 interface, so a 0.3 agent is called with the usual v1.0 types. Cards that only offer 0.3 no longer raise.
+  - **Server:** `JsonRpcDispatcher`, `RestDispatcher`, `Routes::jsonRpc()`, `Routes::rest()` and `Routes::router()` take `enableV03Compat` (off by default, as in Python). With it on, the v0.3 JSON-RPC methods and the v0.3 REST routes (`/v1/...`) are served on the same endpoints through `JsonRpc03Adapter` / `Rest03Adapter`.
+  - **Agent Card:** a card that offers a v0.3 interface is served with the v0.3 fields merged in (`ResponseHelpers::agentCardToDict()`).
+  - **Building blocks:** `Conversions` (every v0.3 ↔ v1.0 conversion), `ToProto` / `FromProto`, the v0.3 proto types (`A2A\Compat\V0_3\Types`, generated from the v0.3 proto Python pins, vendored as `proto/v0_3/a2a_v0_3.proto`), `RequestHandler03`, `Versions`, `ExtensionHeaders`, `V03ServerCallContextBuilder` (accepts `X-A2A-Extensions`).
+  - **Laravel:** `a2a.v0_3_compat` / `A2A_V0_3_COMPAT`. When the card's interfaces are filled in from the routes, the v0.3 ones are added too.
+  - **Interop:** tested against a2a-sdk 0.3.26 in both directions (`scripts/run-python-interop-v03.sh`, `scripts/run-tck-laravel.sh v03-interop`, both in CI). Docs: "Talking to A2A 0.3 agents and clients".
 - **Push notifications.** `PushNotificationSender` + `BasePushNotificationSender`: every task update is POSTed to the task's webhooks as a `StreamResponse`, with `Authorization` (from the config's `authentication`), `X-A2A-Notification-Token` and a stable `X-A2A-Notification-Id`; retries network errors, 408, 425, 429 and 5xx with exponential backoff (honours `Retry-After`); never follows redirects. Wired into `DefaultRequestHandler` (`pushSender:`), sent after each update is saved, in order; a failing sender never fails the task.
 - SSRF protection for webhooks: URLs are checked when a config is created and again before every attempt; with Guzzle (ext-curl) or Symfony HttpClient the connection is pinned to the checked address (DNS-rebinding safe). `PushUrlValidator::resolve()` and `allowedHosts` (for a local receiver in development). `HttpRequest` gains `pinnedAddress` and `followRedirects`; `PinsAddresses` marks senders that can pin.
 - `PdoPushNotificationConfigStore` (SQLite, PostgreSQL, MySQL) with optional `encrypt`/`decrypt` closures; `PushNotificationConfigStore::getInfoForDispatch()` (every owner's configs for a task).

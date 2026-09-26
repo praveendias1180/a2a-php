@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace A2A\Server\Routes;
 
+use A2A\Server\RequestHandlers\ResponseHelpers;
 use A2A\Types\AgentCard;
 use Http\Discovery\Psr17Factory;
 use Psr\Http\Message\ResponseFactoryInterface;
@@ -26,9 +27,10 @@ use Psr\Http\Server\RequestHandlerInterface;
  * already-signed card instead.
  *
  * Mirrors a2a-python: create_agent_card_routes() in
- * src/a2a/server/routes/agent_card_routes.py. Python also merges v0.3
- * compat fields into the card; that arrives with the compat layer
- * (phase 6).
+ * src/a2a/server/routes/agent_card_routes.py. As in Python, a card that
+ * offers a v0.3 interface also carries the v0.3 fields (url,
+ * preferredTransport, ...) so v0.3 clients can read it
+ * (ResponseHelpers::agentCardToDict()).
  */
 final class AgentCardHandler implements RequestHandlerInterface
 {
@@ -63,7 +65,7 @@ final class AgentCardHandler implements RequestHandlerInterface
     public function handle(ServerRequestInterface $request): ResponseInterface
     {
         $card = $this->cardToServe();
-        $body = Common::encode(Common::toJsonValue($card));
+        $body = Common::encode(ResponseHelpers::agentCardToDict($card));
         $etag = '"' . substr(hash('sha256', $body), 0, 32) . '"';
 
         $response = $this->responseFactory->createResponse(200)

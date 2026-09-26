@@ -4,13 +4,15 @@ declare(strict_types=1);
 
 namespace A2A\Client;
 
-use A2A\Client\Errors\A2AClientError;
 use A2A\Client\Http\HttpSender;
 use A2A\Client\Http\HttpSenderFactory;
 use A2A\Client\Transports\ClientTransport;
 use A2A\Client\Transports\JsonRpcTransport;
 use A2A\Client\Transports\RestTransport;
 use A2A\Client\Transports\TenantTransportDecorator;
+use A2A\Compat\V0_3\CompatJsonRpcTransport;
+use A2A\Compat\V0_3\CompatRestTransport;
+use A2A\Compat\V0_3\Versions;
 use A2A\Types\AgentCapabilities;
 use A2A\Types\AgentCard;
 use A2A\Types\AgentInterface;
@@ -30,8 +32,9 @@ use A2A\Utils\TransportProtocol;
  * Mirrors a2a-python: ClientFactory, create_client() and
  * minimal_agent_card() in src/a2a/client/client_factory.py. Python's
  * module-level create_client() is the static createClient() here (PHP can't
- * have a static and an instance method both named create()). gRPC and the
- * A2A 0.3 compatibility transports are not available yet.
+ * have a static and an instance method both named create()). gRPC is not
+ * available yet. An agent whose chosen interface is A2A 0.3 gets the v0.3
+ * compatibility transports (Compat\V0_3), as in Python.
  */
 final class ClientFactory
 {
@@ -232,12 +235,7 @@ final class ClientFactory
      */
     public static function isLegacyVersion(?string $version): bool
     {
-        if ($version === null || $version === '' || !self::isValidVersion($version)) {
-            return false;
-        }
-
-        return version_compare($version, Constants::PROTOCOL_VERSION_0_3, '>=')
-            && version_compare($version, Constants::PROTOCOL_VERSION_1_0, '<');
+        return Versions::isLegacyVersion($version);
     }
 
     /**
@@ -245,38 +243,29 @@ final class ClientFactory
      */
     private function registerDefaults(array $supported): void
     {
-        // An empty list means JSON-RPC only.
+        // An empty list means JSON-RPC only. For a v0.3 interface the v0.3
+        // compatibility transport is used, so calling code stays on v1.0 types.
         if ($supported === [] || in_array(TransportProtocol::JSONRPC->value, $supported, true)) {
             $this->register(TransportProtocol::JSONRPC->value, function (AgentCard $card, string $url, ClientConfig $config): ClientTransport {
-                $this->assertNotLegacy($card, TransportProtocol::JSONRPC->value, $url);
-
-                return new JsonRpcTransport($this->httpSender, $card, $url);
+                return $this->isLegacyInterface($card, TransportProtocol::JSONRPC->value, $url)
+                    ? new CompatJsonRpcTransport($this->httpSender, $card, $url)
+                    : new JsonRpcTransport($this->httpSender, $card, $url);
             });
         }
         if (in_array(TransportProtocol::HTTP_JSON->value, $supported, true)) {
             $this->register(TransportProtocol::HTTP_JSON->value, function (AgentCard $card, string $url, ClientConfig $config): ClientTransport {
-                $this->assertNotLegacy($card, TransportProtocol::HTTP_JSON->value, $url);
-
-                return new RestTransport($this->httpSender, $card, $url);
+                return $this->isLegacyInterface($card, TransportProtocol::HTTP_JSON->value, $url)
+                    ? new CompatRestTransport($this->httpSender, $card, $url)
+                    : new RestTransport($this->httpSender, $card, $url);
             });
         }
     }
 
-    /**
-     * Python switches to its v0.3 compatibility transports here; this SDK
-     * adds those in a later phase, so it refuses instead of sending 1.0
-     * requests an 0.3 agent can't read.
-     */
-    private function assertNotLegacy(AgentCard $card, string $binding, string $url): void
+    private function isLegacyInterface(AgentCard $card, string $binding, string $url): bool
     {
         $interface = self::findBestInterface(iterator_to_array($card->getSupportedInterfaces(), false), [$binding], $url);
-        if ($interface !== null && self::isLegacyVersion($interface->getProtocolVersion())) {
-            throw new A2AClientError(sprintf(
-                'The agent only offers A2A %s over %s; this SDK speaks A2A 1.0 (0.3 compatibility is planned).',
-                $interface->getProtocolVersion(),
-                $binding,
-            ));
-        }
+
+        return self::isLegacyVersion($interface?->getProtocolVersion() ?? Constants::PROTOCOL_VERSION_CURRENT);
     }
 
     private static function isValidVersion(string $version): bool

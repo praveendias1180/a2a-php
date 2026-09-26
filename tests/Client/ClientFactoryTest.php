@@ -7,7 +7,6 @@ namespace A2A\Tests\Client;
 use A2A\Client\BaseClient;
 use A2A\Client\ClientConfig;
 use A2A\Client\ClientFactory;
-use A2A\Client\Errors\A2AClientError;
 use A2A\Client\Transports\ClientTransport;
 use A2A\Client\Transports\JsonRpcTransport;
 use A2A\Client\Transports\RestTransport;
@@ -205,13 +204,32 @@ final class ClientFactoryTest extends TestCase
         self::assertSame('http://new', $transport->url);
     }
 
-    public function testRefusesAnAgentThatOnlySpeaksA2A03(): void
+    public function testUsesTheV03CompatTransportsForAnA2A03Agent(): void
     {
-        $this->card->setSupportedInterfaces([new AgentInterface(['protocol_binding' => 'JSONRPC', 'url' => 'http://old', 'protocol_version' => '0.3.0'])]);
+        // Python: ClientFactory picks CompatJsonRpcTransport / CompatRestTransport
+        // when the selected interface is v0.3.
+        $this->card->setSupportedInterfaces([
+            new AgentInterface(['protocol_binding' => 'JSONRPC', 'url' => 'http://old/rpc', 'protocol_version' => '0.3.0']),
+            new AgentInterface(['protocol_binding' => 'HTTP+JSON', 'url' => 'http://old/rest', 'protocol_version' => '0.3.0']),
+        ]);
 
-        $this->expectException(A2AClientError::class);
-        $this->expectExceptionMessage('0.3 compatibility is planned');
-        (new ClientFactory(new ClientConfig(httpClient: $this->http)))->create($this->card);
+        $jsonRpc = (new ClientFactory(new ClientConfig(httpClient: $this->http)))->create($this->card);
+        $rest = (new ClientFactory(new ClientConfig(httpClient: $this->http, supportedProtocolBindings: ['HTTP+JSON'])))->create($this->card);
+
+        self::assertInstanceOf(\A2A\Compat\V0_3\CompatJsonRpcTransport::class, self::transportOf($jsonRpc));
+        self::assertInstanceOf(\A2A\Compat\V0_3\CompatRestTransport::class, self::transportOf($rest));
+    }
+
+    public function testPrefersV10WhenTheCardOffersBoth(): void
+    {
+        $this->card->setSupportedInterfaces([
+            new AgentInterface(['protocol_binding' => 'JSONRPC', 'url' => 'http://a/rpc', 'protocol_version' => '0.3']),
+            new AgentInterface(['protocol_binding' => 'JSONRPC', 'url' => 'http://a/rpc', 'protocol_version' => '1.0']),
+        ]);
+
+        $client = (new ClientFactory(new ClientConfig(httpClient: $this->http)))->create($this->card);
+
+        self::assertInstanceOf(\A2A\Client\Transports\JsonRpcTransport::class, self::transportOf($client));
     }
 
     public function testFindBestInterfaceOrder(): void

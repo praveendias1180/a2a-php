@@ -6,6 +6,8 @@ inputs:
   - git_repo: https://github.com/a2aproject/A2A.git
     ref: v1.0.0
     subdir: specification
+  # A2A v0.3 (vendored, see proto/v0_3/): only the v0.3 compatibility layer uses it.
+  - directory: proto/v0_3
 managed:
   enabled: true
   disable:
@@ -18,6 +20,12 @@ managed:
     - file_option: php_metadata_namespace
       path: a2a.proto
       value: A2A\Types\GPBMetadata
+    - file_option: php_namespace
+      path: a2a_v0_3.proto
+      value: A2A\Compat\V0_3\Types
+    - file_option: php_metadata_namespace
+      path: a2a_v0_3.proto
+      value: A2A\Compat\V0_3\Types\GPBMetadata
 plugins:
   - remote: buf.build/protocolbuffers/php:v36.2
     out: generated

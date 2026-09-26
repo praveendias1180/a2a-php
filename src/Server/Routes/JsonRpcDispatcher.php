@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace A2A\Server\Routes;
 
+use A2A\Compat\V0_3\JsonRpc03Adapter;
 use A2A\Server\RequestHandlers\RequestHandler;
 use A2A\Server\Routes\Sse\SseStream;
 use A2A\Server\ServerCallContext;
@@ -53,7 +54,11 @@ use Psr\Log\NullLogger;
  * Mirrors a2a-python: JsonRpcDispatcher in
  * src/a2a/server/routes/jsonrpc_dispatcher.py. Differences: exceptions that
  * are not A2A errors return a generic "Internal error" (the original goes
- * to the logger), and the v0.3 compat adapter is not here yet (phase 6).
+ * to the logger).
+ *
+ * With $enableV03Compat the same endpoint also serves the A2A v0.3 methods
+ * (`message/send`, `tasks/get`, ...) through Compat\V0_3\JsonRpc03Adapter,
+ * like Python's enable_v0_3_compat. Off by default, as in Python.
  */
 final class JsonRpcDispatcher implements RequestHandlerInterface
 {
@@ -80,18 +85,24 @@ final class JsonRpcDispatcher implements RequestHandlerInterface
 
     private readonly VersionValidator $versionValidator;
 
+    private readonly ?JsonRpc03Adapter $v03Adapter;
+
     public function __construct(
         private readonly RequestHandler $requestHandler,
         ?ServerCallContextBuilder $contextBuilder = null,
         ?ResponseFactoryInterface $responseFactory = null,
         ?StreamFactoryInterface $streamFactory = null,
         private readonly LoggerInterface $logger = new NullLogger(),
+        public readonly bool $enableV03Compat = false,
     ) {
         $this->contextBuilder = $contextBuilder ?? new DefaultServerCallContextBuilder();
         $factory = ($responseFactory === null || $streamFactory === null) ? new Psr17Factory() : null;
         $this->responseFactory = $responseFactory ?? $factory ?? new Psr17Factory();
         $this->streamFactory = $streamFactory ?? $factory ?? new Psr17Factory();
         $this->versionValidator = new VersionValidator(Constants::PROTOCOL_VERSION_1_0, $this->logger);
+        $this->v03Adapter = $enableV03Compat
+            ? new JsonRpc03Adapter($requestHandler, $contextBuilder, $this->responseFactory, $this->streamFactory, $this->logger)
+            : null;
     }
 
     public function handle(ServerRequestInterface $request): ResponseInterface
@@ -133,6 +144,10 @@ final class JsonRpcDispatcher implements RequestHandlerInterface
             $params = $body->params ?? new \stdClass();
             if (!$params instanceof \stdClass && !is_array($params)) {
                 return $this->errorResponse($requestId, new InvalidRequestError('Invalid request: params must be an object'));
+            }
+
+            if ($this->v03Adapter !== null && $this->v03Adapter->supportsMethod($method)) {
+                return $this->v03Adapter->handleRequest($requestId, $method, $body, $request);
             }
 
             $modelClass = self::METHOD_TO_MODEL[$method] ?? null;

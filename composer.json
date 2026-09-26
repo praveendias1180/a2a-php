@@ -46,7 +46,8 @@
     "autoload": {
         "psr-4": {
             "A2A\\": "src/",
-            "A2A\\Types\\": "generated/A2A/Types/"
+            "A2A\\Types\\": "generated/A2A/Types/",
+            "A2A\\Compat\\V0_3\\Types\\": "generated/A2A/Compat/V0_3/Types/"
         }
     },
     "autoload-dev": {

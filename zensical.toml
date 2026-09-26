@@ -25,6 +25,7 @@ nav = [
     { "Push notifications" = "guides/push-notifications.md" },
     { "Signing the Agent Card" = "guides/card-signing.md" },
     { "Extensions" = "guides/extensions.md" },
+    { "A2A 0.3 agents and clients" = "guides/a2a-0-3.md" },
   ] },
   { "Concepts" = [
     { "A2A in five minutes" = "concepts/a2a-in-five-minutes.md" },

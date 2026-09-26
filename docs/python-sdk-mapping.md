@@ -65,7 +65,7 @@ Built in phase 2. Namespace `A2A\Client`.
 |---|---|---|
 | `client.py` `Client`, `ClientConfig`, `ClientCallContext` | `Client` (abstract), `ClientConfig`, `ClientCallContext` | `sendMessage()` / `subscribe()` return a **Generator** of `StreamResponse`, PHP's answer to Python's async iterator. `ClientConfig::$httpClient` replaces `httpx_client` and takes Guzzle, Symfony HttpClient, any PSR-18 client or an `HttpSender`. No `grpc_channel_factory` yet. |
 | `base_client.py` `BaseClient` | `BaseClient` | Same config handling and interceptor semantics; `agentCard()` exposes the current card. |
-| `client_factory.py` `ClientFactory`, `create_client()`, `minimal_agent_card()` | `ClientFactory`, **`ClientFactory::createClient()`**, `ClientFactory::minimalAgentCard()` | PHP can't have a static and an instance method both named `create()`, so Python's module-level `create_client()` is the static `createClient()`. Instance `create()` / `createFromUrl()` / `register()` as in Python. A card that only offers A2A 0.3 raises `A2AClientError` until the 0.3 layer lands. |
+| `client_factory.py` `ClientFactory`, `create_client()`, `minimal_agent_card()` | `ClientFactory`, **`ClientFactory::createClient()`**, `ClientFactory::minimalAgentCard()` | PHP can't have a static and an instance method both named `create()`, so Python's module-level `create_client()` is the static `createClient()`. Instance `create()` / `createFromUrl()` / `register()` as in Python. A v0.3 interface gets the `Compat\V0_3` transports, as in Python. |
 | `card_resolver.py` `A2ACardResolver`, `parse_agent_card()` | `A2ACardResolver`, `A2ACardResolver::parseAgentCard()` | Includes the pre-1.0 card field mapping. `http_kwargs` → `['headers' => [...], 'timeout' => ...]`. |
 | `interceptors.py` `ClientCallInterceptor`, `BeforeArgs`, `AfterArgs` | same names | Interface instead of ABC; methods are synchronous. |
 | `auth/credentials.py`, `auth/interceptor.py` | `Auth\CredentialService` (interface), `Auth\InMemoryContextCredentialStore`, `Auth\AuthInterceptor` | |
@@ -82,7 +82,17 @@ Built in phase 2. Namespace `A2A\Client`.
 
 | Python | PHP | Notes |
 |---|---|---|
-| `compat/v0_3/*` | `Compat\V0_3\*` | Phase 5. Translates 0.3 JSON to and from 1.0 types at the dispatcher edge. |
+| `compat/v0_3/conversions.py` | `Compat\V0_3\Conversions` | Function for function (`to_core_x` → `toCoreX`). v0.3 objects are the decoded JSON-RPC JSON (`\stdClass`) instead of pydantic models; request converters take the JSON-RPC `params`. |
+| `compat/v0_3/types.py` | — | No model classes: the v0.3 JSON-RPC shape stays decoded JSON. |
+| `compat/v0_3/proto_utils.py` `ToProto`, `FromProto` | `Compat\V0_3\ToProto`, `FromProto` | v0.3 proto ↔ v0.3 JSON, for the REST binding. Keeps the status timestamp (Python drops it). |
+| `compat/v0_3/a2a_v0_3_pb2.py` | `Compat\V0_3\Types\*` (generated) | From the same v0.3 proto commit Python pins, vendored as `proto/v0_3/a2a_v0_3.proto`. |
+| `compat/v0_3/versions.py`, `extension_headers.py`, `context_builders.py` | `Versions`, `ExtensionHeaders`, `V03ServerCallContextBuilder` | |
+| `compat/v0_3/request_handler.py` `RequestHandler03` | `RequestHandler03` | |
+| `compat/v0_3/jsonrpc_adapter.py` `JSONRPC03Adapter` | `JsonRpc03Adapter` | Plugged into `JsonRpcDispatcher` by `enableV03Compat`. A2A errors keep their code (Python: `-32603`). |
+| `compat/v0_3/rest_adapter.py`, `rest_handler.py` `REST03Adapter`, `REST03Handler` | `Rest03Adapter`, `Rest03Handler` | Plugged into `RestDispatcher` by `enableV03Compat`. Also serves DELETE on a push config; the card comes back camelCase. |
+| `compat/v0_3/jsonrpc_transport.py`, `rest_transport.py` `CompatJsonRpcTransport`, `CompatRestTransport` | same names | Always state `blocking`. REST list/delete push configs use the v0.3 proto routes (Python: NotImplementedError). |
+| `compat/v0_3/grpc_*` | — | No gRPC. |
+| `request_handlers/response_helpers.py` `agent_card_to_dict()` | `Server\RequestHandlers\ResponseHelpers::agentCardToDict()` | Merges the v0.3 card fields when the card offers a v0.3 interface. |
 | `a2a_db_cli.py`, `migrations/` (alembic) | `bin/a2a-db` (schema SQL) + Laravel migrations in the bridge | |
 | `samples/hello_world_agent.py`, `cli.py` | `examples/hello-world/server.php`, `examples/cli.php` | Line-for-line port. It is the first thing a Python user looks for. |
 | `tck/sut_agent.py` | `tck/sut-agent.php` | The system-under-test agent the A2A TCK runs against in CI. |

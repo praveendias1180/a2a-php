@@ -23,21 +23,29 @@ final class Routes
 {
     private function __construct() {}
 
+    /**
+     * @param bool $enableV03Compat also serve the A2A v0.3 methods (Python: enable_v0_3_compat)
+     */
     public static function jsonRpc(
         RequestHandler $requestHandler,
         ?ServerCallContextBuilder $contextBuilder = null,
         LoggerInterface $logger = new NullLogger(),
+        bool $enableV03Compat = false,
     ): JsonRpcDispatcher {
-        return new JsonRpcDispatcher($requestHandler, $contextBuilder, logger: $logger);
+        return new JsonRpcDispatcher($requestHandler, $contextBuilder, logger: $logger, enableV03Compat: $enableV03Compat);
     }
 
+    /**
+     * @param bool $enableV03Compat also serve the A2A v0.3 routes (`/v1/...`) under the prefix
+     */
     public static function rest(
         RequestHandler $requestHandler,
         string $pathPrefix = '',
         ?ServerCallContextBuilder $contextBuilder = null,
         LoggerInterface $logger = new NullLogger(),
+        bool $enableV03Compat = false,
     ): RestDispatcher {
-        return new RestDispatcher($requestHandler, $pathPrefix, $contextBuilder, logger: $logger);
+        return new RestDispatcher($requestHandler, $pathPrefix, $contextBuilder, logger: $logger, enableV03Compat: $enableV03Compat);
     }
 
     /**
@@ -62,14 +70,15 @@ final class Routes
         ?ServerCallContextBuilder $contextBuilder = null,
         LoggerInterface $logger = new NullLogger(),
         ?\Closure $cardSigner = null,
+        bool $enableV03Compat = false,
     ): Router {
         $router = new Router();
         $router->add($agentCardPath, self::agentCard($agentCard, signer: $cardSigner));
         if ($jsonRpcPath !== null) {
-            $router->add($jsonRpcPath, self::jsonRpc($requestHandler, $contextBuilder, $logger));
+            $router->add($jsonRpcPath, self::jsonRpc($requestHandler, $contextBuilder, $logger, $enableV03Compat));
         }
         if ($restPrefix !== null) {
-            $router->addRest(self::rest($requestHandler, $restPrefix, $contextBuilder, $logger));
+            $router->addRest(self::rest($requestHandler, $restPrefix, $contextBuilder, $logger, $enableV03Compat));
         }
 
         return $router;

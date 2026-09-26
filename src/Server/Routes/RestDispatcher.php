@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace A2A\Server\Routes;
 
+use A2A\Compat\V0_3\Rest03Adapter;
 use A2A\Server\RequestHandlers\RequestHandler;
 use A2A\Server\Routes\Sse\SseStream;
 use A2A\Server\ServerCallContext;
@@ -54,6 +55,11 @@ use Psr\Log\NullLogger;
  * A PSR-15 handler that does its own routing, so mount it for every path
  * under the prefix.
  *
+ * With $enableV03Compat it also serves the A2A v0.3 binding under the same
+ * prefix (`/v1/message:send`, `/v1/tasks/{id}`, ...) through
+ * Compat\V0_3\Rest03Adapter. The v0.3 routes are tried first, as Python
+ * mounts them first. Off by default, as in Python.
+ *
  * Mirrors a2a-python: RestDispatcher + create_rest_routes() in
  * src/a2a/server/routes/rest_dispatcher.py and rest_routes.py.
  */
@@ -69,6 +75,8 @@ final class RestDispatcher implements RequestHandlerInterface
 
     private readonly string $pathPrefix;
 
+    private readonly ?Rest03Adapter $v03Adapter;
+
     public function __construct(
         private readonly RequestHandler $requestHandler,
         string $pathPrefix = '',
@@ -76,6 +84,7 @@ final class RestDispatcher implements RequestHandlerInterface
         ?ResponseFactoryInterface $responseFactory = null,
         ?StreamFactoryInterface $streamFactory = null,
         private readonly LoggerInterface $logger = new NullLogger(),
+        public readonly bool $enableV03Compat = false,
     ) {
         $this->pathPrefix = rtrim($pathPrefix, '/');
         $this->contextBuilder = $contextBuilder ?? new DefaultServerCallContextBuilder();
@@ -83,6 +92,9 @@ final class RestDispatcher implements RequestHandlerInterface
         $this->responseFactory = $responseFactory ?? $factory;
         $this->streamFactory = $streamFactory ?? $factory;
         $this->versionValidator = new VersionValidator(Constants::PROTOCOL_VERSION_1_0, $this->logger);
+        $this->v03Adapter = $enableV03Compat
+            ? new Rest03Adapter($requestHandler, $contextBuilder, $this->responseFactory, $this->streamFactory, $this->logger)
+            : null;
     }
 
     /**
@@ -103,6 +115,10 @@ final class RestDispatcher implements RequestHandlerInterface
         }
         $path = '/' . ltrim($path, '/');
         $method = strtoupper($request->getMethod());
+
+        if ($this->v03Adapter !== null && ($v03Route = Rest03Adapter::route($method, $path)) !== null) {
+            return $this->v03Adapter->handle($request, $v03Route);
+        }
 
         $route = self::route($method, $path);
         $tenant = '';

@@ -1,0 +1,7 @@
+# The last A2A v0.3 release of the official Python SDK, for the v0.3
+# compatibility interop (scripts/run-python-interop-v03.sh). Install it apart
+# from requirements.txt (a venv or `pip install --target`): the 0.3 and 1.x
+# SDKs share the `a2a` package name.
+a2a-sdk[http-server]==0.3.26
+fastapi==0.141.1
+uvicorn==0.54.0

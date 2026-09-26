@@ -4,11 +4,17 @@
 # `php artisan queue:work` process while PHP-FPM behind nginx serves the
 # HTTP side, streaming events from the shared event log.
 #
-#     A2A_TCK_DIR=/path/to/a2a-tck scripts/run-tck-laravel.sh [must|should|may|all|long-task] [-- pytest args]
+#     A2A_TCK_DIR=/path/to/a2a-tck scripts/run-tck-laravel.sh [must|should|may|all|long-task|v03-interop] [-- pytest args]
 #
 # `long-task` runs scripts/tck-laravel/long-task-proof.php instead of the
 # TCK: a 20 s task streamed live from a queue worker, and one that keeps
 # running after the request that started it has ended.
+#
+# `v03-interop` turns on the bridge's A2A v0.3 compatibility (a2a.v0_3_compat)
+# and runs an A2A v0.3 client (the Python a2a-sdk 0.3.x) against the app:
+# tests/Interop/python/v03_client_against_php.py --agent tck. Set
+# A2A_PYTHON_V03 to a python with a2a-sdk 0.3.x (see
+# tests/Interop/python/requirements-v03.txt); default python3.
 #
 # The app is built once (composer create-project laravel/laravel) in
 # $A2A_LARAVEL_APP (default build/tck-laravel-app), wired to this checkout
@@ -37,15 +43,17 @@ repo="$PWD"
 level="${1:-must}"
 if [ "$#" -gt 0 ]; then shift; fi
 if [ "${1:-}" = "--" ]; then shift; fi
-if [ "$level" != "long-task" ]; then
+if [ "$level" != "long-task" ] && [ "$level" != "v03-interop" ]; then
     tck_dir="${A2A_TCK_DIR:?Set A2A_TCK_DIR to an a2a-tck checkout}"
 fi
+v03_compat=false
+if [ "$level" = "v03-interop" ]; then v03_compat=true; fi
 port="${A2A_TCK_PORT:-9998}"
 children="${A2A_FPM_CHILDREN:-16}"
 queue_workers="${A2A_QUEUE_WORKERS:-8}"
 app="${A2A_LARAVEL_APP:-$repo/build/tck-laravel-app}"
 profiles="${A2A_TCK_PROFILES:-minimal full required-extension}"
-if [ "$level" = "long-task" ]; then profiles=minimal; fi
+if [ "$level" = "long-task" ] || [ "$level" = "v03-interop" ]; then profiles=minimal; fi
 run_dir="$(mktemp -d)"
 pids=()
 
@@ -113,6 +121,10 @@ fi
     if [ ! -e vendor/praveendias1180/a2a-laravel/composer.json ]; then
         composer require --no-interaction --quiet "praveendias1180/a2a-laravel:0.2.99" "praveendias1180/a2a-php:0.2.99"
     fi
+    # A reused app keeps the package metadata (and so the autoload map) from when
+    # the path packages were installed; refresh it so namespaces added to the
+    # checkout since then resolve.
+    composer update --no-interaction --quiet praveendias1180/a2a-php praveendias1180/a2a-laravel
     mkdir -p app/A2A
     cp "$repo/tck/TckAgentExecutor.php" app/A2A/TckAgentExecutor.php
     cp "$repo/scripts/tck-laravel/TckAgentCard.php" "$repo/scripts/tck-laravel/LongTaskExecutor.php" app/A2A/
@@ -128,8 +140,8 @@ fi
             $env = preg_match("/^#?\s*$key=.*$/m", $env) ? preg_replace("/^#?\s*$key=.*$/m", $line, $env) : rtrim($env) . "\n$line\n";
         }
         file_put_contents($file, $env);
-    ' "$(printf '{"APP_ENV":"production","APP_DEBUG":"false","APP_URL":"http://127.0.0.1:%s","LOG_CHANNEL":"single","LOG_LEVEL":"warning","DB_CONNECTION":"sqlite","QUEUE_CONNECTION":"%s","CACHE_STORE":"%s","SESSION_DRIVER":"array","REDIS_CLIENT":"phpredis","REDIS_HOST":"%s","REDIS_PORT":"%s","A2A_EVENTS_DRIVER":"%s","A2A_QUEUE_TIMEOUT":"600"}' \
-        "$port" "$queue_driver" "$cache_store" "${redis_host:-127.0.0.1}" "$redis_port" "$events")"
+    ' "$(printf '{"APP_ENV":"production","APP_DEBUG":"false","APP_URL":"http://127.0.0.1:%s","LOG_CHANNEL":"single","LOG_LEVEL":"warning","DB_CONNECTION":"sqlite","QUEUE_CONNECTION":"%s","CACHE_STORE":"%s","SESSION_DRIVER":"array","REDIS_CLIENT":"phpredis","REDIS_HOST":"%s","REDIS_PORT":"%s","A2A_EVENTS_DRIVER":"%s","A2A_QUEUE_TIMEOUT":"600","A2A_V0_3_COMPAT":"%s"}' \
+        "$port" "$queue_driver" "$cache_store" "${redis_host:-127.0.0.1}" "$redis_port" "$events" "$v03_compat")"
 
     # SQLite shared by FPM children and workers: wait on locks instead of failing.
     sed -i "s#'busy_timeout' => null#'busy_timeout' => 10000#; s#'journal_mode' => null#'journal_mode' => 'wal'#" config/database.php
@@ -230,6 +242,11 @@ failed=()
 for profile in $profiles; do
     echo "=== A2A TCK (Laravel): level $level, SUT profile $profile ==="
     start_services "$profile"
+
+    if [ "$level" = "v03-interop" ]; then
+        "${A2A_PYTHON_V03:-python3}" "$repo/tests/Interop/python/v03_client_against_php.py" "http://127.0.0.1:${port}" --agent tck
+        exit 0
+    fi
 
     if [ "$level" = "long-task" ]; then
         (cd "$app" && php "$repo/scripts/tck-laravel/long-task-proof.php" "http://127.0.0.1:${port}")

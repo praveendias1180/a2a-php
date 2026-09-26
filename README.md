@@ -9,7 +9,7 @@ A PHP implementation of the [A2A (Agent2Agent) protocol](https://a2a-protocol.or
 
 📖 **Documentation: <https://praveendias1180.github.io/a2a-php/>**
 
-> **Status: early development (phase 6 of 7).** The wire types, utilities, client, server, Laravel bridge, push notifications, Agent Card signing and extensions are done. The server passes the official A2A TCK (plain PHP, and a Laravel app running executors on queue workers), and the SDK interoperates with the official Python SDK in both directions, including card signatures. A2A 0.3 compatibility is next. The API may still change before 1.0. See the [roadmap](#roadmap).
+> **Status: early development (phase 7 of 7).** The wire types, utilities, client, server, Laravel bridge, push notifications, Agent Card signing, extensions and A2A 0.3 compatibility are done. The server passes the official A2A TCK (plain PHP, and a Laravel app running executors on queue workers), and the SDK interoperates with the official Python SDK in both directions, including card signatures, and with the last A2A 0.3 release of the Python SDK. 1.0 is next. The API may still change before 1.0. See the [roadmap](#roadmap).
 
 ## Packages
 
@@ -29,7 +29,7 @@ composer require praveendias1180/a2a-php
 | A2A spec | Status |
 |---|---|
 | 1.0 | **supported since v0.1.0.** The server passes the official A2A TCK at the MUST, SHOULD and MAY levels over JSON-RPC and HTTP+JSON; the client interoperates with the official Python SDK in both directions. |
-| 0.3 | planned as a compatibility layer (phase 6) |
+| 0.3 | **supported through a compatibility layer** (`Compat\V0_3`, like Python's `a2a.compat.v0_3`): the client talks to 0.3 agents automatically, and servers answer 0.3 clients with `enableV03Compat` (Laravel: `A2A_V0_3_COMPAT=true`). Tested both ways against a2a-sdk 0.3.26. See [the guide](https://praveendias1180.github.io/a2a-php/guides/a2a-0-3/). |
 
 Types are generated from the official [`a2a.proto`](https://github.com/a2aproject/A2A/blob/v1.0.0/specification/a2a.proto) (v1.0.0, the same pin as the Python SDK). JSON on the wire is standard ProtoJSON.
 
@@ -142,7 +142,7 @@ That mounts the Agent Card, JSON-RPC and HTTP+JSON. Set `A2A_RUNNER=queued` and 
 | 3 | Server core | ✅ |
 | 4 | Laravel bridge | ✅ |
 | 5 | Push notifications, card signing, extensions (the PDO stores arrived early, in phase 3) | ✅ |
-| 6 | v0.3 compatibility | a 0.3 client works against a 1.0 server |
+| 6 | v0.3 compatibility | ✅ |
 | 7 | 1.0.0 | stable release |
 
 Design notes: [Architecture](https://praveendias1180.github.io/a2a-php/architecture/). The class-by-class mapping to the Python SDK: [Python → PHP mapping](https://praveendias1180.github.io/a2a-php/python-sdk-mapping/).

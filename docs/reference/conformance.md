@@ -47,6 +47,18 @@ A separate check (`scripts/run-tck-laravel.sh long-task`) streams a 20-second ta
 
 Besides the TCK, CI runs the official Python SDK against this one (`scripts/run-python-interop.sh`): the PHP client against the Python sample server, the Python client against the PHP server, and Agent Card signatures made by each SDK verified by the other (ES256 and HS256, with byte-identical canonical JSON).
 
+### A2A 0.3 compatibility
+
+The official TCK tests A2A 1.0 servers only. The v0.3 compatibility layer ([guide](../guides/a2a-0-3.md)) is therefore tested against the **last 0.3 release of the official Python SDK, a2a-sdk 0.3.26**, in both directions. The results below are from the run on 2026-09-26.
+
+| Direction | JSON-RPC | HTTP+JSON |
+|---|---|---|
+| a2a-sdk 0.3.26 **client** → PHP server (`examples/hello-world/server.php`) | ✅ stream, blocking send, get (historyLength), resubscribe, cancel, task not found (`-32001`), push unsupported (`-32003`) | ✅ the same seven, with the REST status codes (404, 400) |
+| a2a-sdk 0.3.26 **client** → Laravel app (queued runner, PHP-FPM + nginx, `a2a.v0_3_compat`) | ✅ the same seven | ✅ the same seven |
+| PHP **client** → a2a-sdk 0.3.26 **server** | ✅ card, blocking, streaming (live), get, unknown task, cancel, subscribe (Guzzle + Symfony) | ✅ the same (28 checks in total) |
+
+CI runs all three: `scripts/run-python-interop-v03.sh`, and `scripts/run-tck-laravel.sh v03-interop` in the Laravel job. The 1.0 TCK results above were re-run with the compatibility layer in place and are unchanged.
+
 ## Where the PHP SDK deliberately differs to conform
 
 | Requirement | Python SDK | PHP SDK |

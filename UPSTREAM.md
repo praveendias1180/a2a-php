@@ -7,6 +7,8 @@ This SDK tracks these upstream sources. Bump both deliberately, in their own PR.
 | A2A specification: [`a2aproject/A2A`](https://github.com/a2aproject/A2A) `specification/a2a.proto` | `v1.0.0` (`buf.gen.yaml`) | Generating `generated/` |
 | A2A Python SDK: [`a2aproject/a2a-python`](https://github.com/a2aproject/a2a-python) | `0d5473c` (2026-09-24) | API shape, behaviour, tests to port |
 | A2A TCK: [`a2aproject/a2a-tck`](https://github.com/a2aproject/a2a-tck) | `263b9cf` (2026-09-01; `A2A_TCK_REF` in `.github/workflows/ci.yml`) | Conformance checks; `tck/sut-agent.php` ports its generated Python SUT |
+| A2A v0.3 proto (compatibility layer) | [`b3b266d`](https://github.com/a2aproject/A2A/blob/b3b266d127dde3d1000ec103b252d1de81289e83/specification/grpc/a2a.proto), vendored as `proto/v0_3/a2a_v0_3.proto` | Generating `generated/A2A/Compat/V0_3/Types` (same commit as the Python SDK's `scripts/gen_proto.sh`) |
+| A2A Python SDK, v0.3 line | `a2a-sdk==0.3.26` (`tests/Interop/python/requirements-v03.txt`) | v0.3 interop in CI |
 | buf PHP plugin | `buf.build/protocolbuffers/php:v36.2` | Code generation |
 
 Notes:

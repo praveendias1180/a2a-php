@@ -9,6 +9,9 @@
  * Then call it with examples/call-an-agent.php, the Python SDK's
  * samples/cli.py, or any A2A client.
  *
+ * Like the Python sample, it also speaks A2A v0.3 (the v0.3 interfaces in the
+ * card + enableV03Compat), so v0.3 clients such as a2a-sdk 0.3.x work too.
+ *
  * Every PHP request is a separate process, so tasks and stream events are
  * kept in SQLite (A2A_DB, default: a file in the system temp dir). Several
  * workers let a stream stay open while other requests are served.
@@ -55,6 +58,8 @@ $agentCard = new AgentCard([
     'supported_interfaces' => [
         new AgentInterface(['protocol_binding' => 'JSONRPC', 'protocol_version' => '1.0', 'url' => $baseUrl . '/a2a/jsonrpc']),
         new AgentInterface(['protocol_binding' => 'HTTP+JSON', 'protocol_version' => '1.0', 'url' => $baseUrl . '/a2a/rest']),
+        new AgentInterface(['protocol_binding' => 'JSONRPC', 'protocol_version' => '0.3', 'url' => $baseUrl . '/a2a/jsonrpc']),
+        new AgentInterface(['protocol_binding' => 'HTTP+JSON', 'protocol_version' => '0.3', 'url' => $baseUrl . '/a2a/rest']),
     ],
 ]);
 // --8<-- [end:card]
@@ -68,6 +73,6 @@ $handler = new DefaultRequestHandler(
     queueManager: new PdoQueueManager($pdo),
 );
 
-$router = Routes::router($handler, $agentCard, jsonRpcPath: '/a2a/jsonrpc', restPrefix: '/a2a/rest');
+$router = Routes::router($handler, $agentCard, jsonRpcPath: '/a2a/jsonrpc', restPrefix: '/a2a/rest', enableV03Compat: true);
 (new ResponseEmitter($handler))->emit($router->handle($request));
 // --8<-- [end:serve]
