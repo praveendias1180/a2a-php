@@ -26,8 +26,11 @@ on:
 permissions:
   contents: read
 
+# Tag runs get their own group: they only dispatch the real deploy (which runs in
+# 'publish'), so sharing 'publish' let that deploy cancel the run that started
+# it, leaving a red "cancelled" mark on every release commit.
 concurrency:
-  group: docs-${{ github.event_name == 'pull_request' && github.ref || 'publish' }}
+  group: docs-${{ github.event_name == 'pull_request' && github.ref || (startsWith(github.ref, 'refs/tags/') && github.ref || 'publish') }}
   cancel-in-progress: true
 
 env:
