@@ -185,11 +185,13 @@ final class RunAgentExecutor implements ShouldQueue
             }
         } catch (\Throwable $e) {
             // ActiveTask already logged it and marked the task FAILED.
+            // Partial output, never throw: an exception here would mask the
+            // original error and skip the log line below.
             $cache->put(self::cacheKey($this->runId) . ':error', json_encode([
                 'class' => $e instanceof A2AError ? $e::class : null,
                 'message' => $e instanceof A2AError ? $e->getMessage() : null,
                 'data' => $e instanceof A2AError ? $e->data : null,
-            ], JSON_THROW_ON_ERROR | JSON_PARTIAL_OUTPUT_ON_ERROR), $ttl);
+            ], JSON_PARTIAL_OUTPUT_ON_ERROR), $ttl);
             $logger->error('A2A run {run} of task {task} failed: {error}', ['run' => $this->runId, 'task' => $this->taskId, 'error' => $e->getMessage(), 'exception' => $e]);
         } finally {
             $cache->put(self::cacheKey($this->runId), self::FINISHED, $ttl);

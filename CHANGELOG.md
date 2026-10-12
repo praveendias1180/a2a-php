@@ -8,7 +8,10 @@ All notable changes to this project are documented here. The format follows
 
 ## [1.0.1] - 2026-10-12
 
-Documentation only; no code changes.
+Documentation, plus one static-analysis fix with no behaviour change.
+
+### Fixed
+- `a2a-laravel`: `RunAgentExecutor` no longer passes both `JSON_THROW_ON_ERROR` and `JSON_PARTIAL_OUTPUT_ON_ERROR` to `json_encode` when recording a failed run. PHP already let partial output win, so the result is identical; PHPStan 2.3 now rejects the combination.
 
 ### Added
 - Docs: "Check the agent first with the A2A CLI" in *Call an agent*, showing how to test an agent with the official [A2A CLI](https://github.com/a2aproject/a2a-cli) before debugging PHP code, including its `--echo` and `--proxy` server modes. Suggested by an A2A maintainer when the SDK was listed on the Community SDKs page.
