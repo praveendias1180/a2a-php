@@ -128,6 +128,30 @@ With no `httpClient`, the SDK uses Guzzle if it is installed, then Symfony HttpC
 !!! note "Guzzle streams over HTTP/1.0"
     Guzzle streams through PHP's `http://` wrapper, which holds an HTTP/1.1 *chunked* body back until the server closes it. So the SDK sends Guzzle's streaming requests as HTTP/1.0, which the server answers unchunked. Ordinary requests stay on HTTP/1.1.
 
+### Check the agent first with the A2A CLI
+
+Before you debug PHP code, check the agent itself with the official [A2A CLI](https://github.com/a2aproject/a2a-cli) (`a2a`). It talks to any A2A agent from the terminal, so you can see how the agent behaves with no PHP involved:
+
+```bash
+# Is the agent up, and which transports does its card offer?
+a2a card get https://agent.example.com
+
+# Send a message, then the same with live streaming
+a2a send -a https://agent.example.com "hello"
+a2a send -a https://agent.example.com --stream "hello"
+
+# Try one transport at a time
+a2a send -a https://agent.example.com --transport jsonrpc "hello"
+a2a send -a https://agent.example.com --transport rest "hello"
+```
+
+If the CLI works but your PHP client doesn't, look at your `ClientConfig` and HTTP client (the table above). If the CLI fails too, the problem is the agent.
+
+Two of its server modes help when you are writing the client:
+
+- `a2a server --echo` starts a local agent on `http://127.0.0.1:8080` that answers every message with its own text. Point `ClientFactory::createClient()` at it to try your code without building an agent.
+- `a2a server --proxy -a https://agent.example.com` forwards to the real agent and logs every request and response. Point your PHP client at the proxy to see exactly what it sends.
+
 ## Timeouts, headers and authentication
 
 Per call, through a `ClientCallContext`:

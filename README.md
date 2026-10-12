@@ -56,6 +56,8 @@ foreach ($client->sendMessage($request) as $event) {   // streams (SSE) when the
 
 JSON-RPC and HTTP+JSON, every A2A operation, tested in CI against the official Python SDK's sample agent. Works with Guzzle or Symfony HttpClient (live streaming) or any PSR-18 client. More in [Call an agent](https://praveendias1180.github.io/a2a-php/get-started/call-an-agent/).
 
+> **Tip:** check an agent from the terminal first with the official [A2A CLI](https://github.com/a2aproject/a2a-cli): `a2a send -a https://agent.example.com --stream "hello"`. If the CLI works and your PHP code doesn't, the problem is on the client side. See [Check the agent first](https://praveendias1180.github.io/a2a-php/get-started/call-an-agent/#check-the-agent-first-with-the-a2a-cli).
+
 ## Serve an agent
 
 The SDK's [`examples/hello-world`](examples/hello-world) (a port of the Python SDK's `hello_world_agent.py`, run in CI against the official Python client and the A2A TCK):

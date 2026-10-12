@@ -6,6 +6,14 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+## [1.0.1] - 2026-10-12
+
+Documentation only; no code changes.
+
+### Added
+- Docs: "Check the agent first with the A2A CLI" in *Call an agent*, showing how to test an agent with the official [A2A CLI](https://github.com/a2aproject/a2a-cli) before debugging PHP code, including its `--echo` and `--proxy` server modes. Suggested by an A2A maintainer when the SDK was listed on the Community SDKs page.
+- README: a short tip pointing to it.
+
 ## [1.0.0] - 2026-09-26
 
 The stable release. No API changes since 0.3.0 beyond marking implementation details `@internal`; from here the public API follows [Semantic Versioning](https://praveendias1180.github.io/a2a-php/reference/backward-compatibility/). Both packages are released as 1.0.0; `a2a-laravel` requires `a2a-php` `^1.0`. Upgrading from 0.x: see the [upgrade guide](https://praveendias1180.github.io/a2a-php/guides/upgrading/).
@@ -152,7 +160,8 @@ First release: A2A 1.0 client and server for PHP 8.2+. The server passes the off
 - Requires `php-http/discovery` (finds a PSR-18 client when none is given) and
   `psr/http-factory` ^1.1.
 
-[Unreleased]: https://github.com/praveendias1180/a2a-php/compare/v1.0.0...HEAD
+[Unreleased]: https://github.com/praveendias1180/a2a-php/compare/v1.0.1...HEAD
+[1.0.1]: https://github.com/praveendias1180/a2a-php/releases/tag/v1.0.1
 [1.0.0]: https://github.com/praveendias1180/a2a-php/releases/tag/v1.0.0
 [0.3.0]: https://github.com/praveendias1180/a2a-php/releases/tag/v0.3.0
 [0.2.0]: https://github.com/praveendias1180/a2a-php/releases/tag/v0.2.0
