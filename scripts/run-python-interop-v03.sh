@@ -63,11 +63,20 @@ A2A_PYTHON_V03_SERVER_URL="http://127.0.0.1:${port}" vendor/bin/phpunit --group 
 echo
 echo "Python a2a-sdk 0.3 client -> PHP server (examples/hello-world/server.php on :${php_port}):"
 set -m
-A2A_DB="$php_db" PHP_CLI_SERVER_WORKERS=4 php -S "127.0.0.1:${php_port}" examples/hello-world/server.php >/dev/null 2>&1 &
+php_log="$(mktemp)"
+A2A_DB="$php_db" PHP_CLI_SERVER_WORKERS=4 php -S "127.0.0.1:${php_port}" examples/hello-world/server.php >"$php_log" 2>&1 &
 php_pid=$!
 set +m
-for _ in $(seq 1 30); do
+# Wait up to 60 s (slow CI runners), and fail with the server's own output
+# instead of letting the Python client hit a closed port.
+for _ in $(seq 1 120); do
     curl -sf -o /dev/null "http://127.0.0.1:${php_port}/.well-known/agent-card.json" && break
+    kill -0 "$php_pid" 2>/dev/null || break
     sleep 0.5
 done
+if ! curl -sf -o /dev/null "http://127.0.0.1:${php_port}/.well-known/agent-card.json"; then
+    echo "The PHP hello-world server did not start on :${php_port}. Its output:" >&2
+    cat "$php_log" >&2
+    exit 1
+fi
 "$python" tests/Interop/python/v03_client_against_php.py "http://127.0.0.1:${php_port}"
