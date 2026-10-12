@@ -296,7 +296,7 @@ final class RestDispatcher implements RequestHandlerInterface
         $body = (string) $request->getBody();
         try {
             // Unknown fields are ignored for forward compatibility
-            // (DM-SERIAL-005); Python rejects them.
+            // (DM-SERIAL-005), as Python does since a2a-sdk 1.2.0.
             $message->mergeFromJsonString($body === '' ? '{}' : $body, true);
         } catch (GPBDecodeException $e) {
             throw $e;
@@ -330,6 +330,12 @@ final class RestDispatcher implements RequestHandlerInterface
         $this->logger->error('REST request failed: {message}', ['message' => $error->getMessage(), 'exception' => $error]);
     }
 
+    /**
+     * application/json, as spec v1.0.0 section 11.1 says and the A2A TCK
+     * requires (HTTP_JSON-SVC-001, HTTP_JSON-ERR-001). Later spec text prefers
+     * application/a2a+json and a2a-sdk 1.2.0 sends it on success responses;
+     * not followed until the pinned spec and the TCK do.
+     */
     private function json(mixed $payload, int $status = 200): ResponseInterface
     {
         return $this->responseFactory->createResponse($status)

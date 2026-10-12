@@ -6,6 +6,7 @@ namespace A2A\Laravel\Stores;
 
 use A2A\Server\OwnerResolver;
 use A2A\Server\ServerCallContext;
+use A2A\Server\Tasks\PushNotificationConfigs;
 use A2A\Server\Tasks\PushNotificationConfigStore;
 use A2A\Types\TaskPushNotificationConfig;
 
@@ -32,12 +33,7 @@ final class DatabasePushNotificationConfigStore implements PushNotificationConfi
 
     public function setInfo(string $taskId, TaskPushNotificationConfig $config, ServerCallContext $context): void
     {
-        $copy = new TaskPushNotificationConfig();
-        $copy->mergeFrom($config);
-        if ($copy->getId() === '') {
-            $copy->setId($taskId);
-        }
-        $copy->setTaskId($taskId);
+        $copy = PushNotificationConfigs::normalize($taskId, $config);
 
         PushNotificationConfigModel::query()->updateOrCreate(
             ['owner' => ($this->ownerResolver)($context), 'task_id' => $taskId, 'config_id' => $copy->getId()],

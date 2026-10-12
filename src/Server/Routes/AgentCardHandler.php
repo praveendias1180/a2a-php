@@ -6,12 +6,14 @@ namespace A2A\Server\Routes;
 
 use A2A\Server\RequestHandlers\ResponseHelpers;
 use A2A\Types\AgentCard;
+use A2A\Utils\ProtoUtils;
 use Http\Discovery\Psr17Factory;
 use Psr\Http\Message\ResponseFactoryInterface;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Message\StreamFactoryInterface;
 use Psr\Http\Server\RequestHandlerInterface;
+use Psr\Log\LoggerInterface;
 
 /**
  * Serves the Agent Card (normally at /.well-known/agent-card.json) with the
@@ -52,7 +54,11 @@ final class AgentCardHandler implements RequestHandlerInterface
         ?ResponseFactoryInterface $responseFactory = null,
         ?StreamFactoryInterface $streamFactory = null,
         private readonly ?\Closure $signer = null,
+        ?LoggerInterface $logger = null,
     ) {
+        if ($logger !== null) {
+            ProtoUtils::warnOnMissingRequiredFields($this->agentCard, 'agent_card passed to AgentCardHandler:', $logger);
+        }
         $factory = new Psr17Factory();
         $this->responseFactory = $responseFactory ?? $factory;
         $this->streamFactory = $streamFactory ?? $factory;
@@ -74,13 +80,32 @@ final class AgentCardHandler implements RequestHandlerInterface
             ->withHeader('Last-Modified', gmdate('D, d M Y H:i:s', $this->loadedAt) . ' GMT');
 
         $ifNoneMatch = $request->getHeaderLine('If-None-Match');
-        if ($ifNoneMatch !== '' && in_array($etag, array_map('trim', explode(',', $ifNoneMatch)), true)) {
+        if ($ifNoneMatch !== '' && self::ifNoneMatchHits($ifNoneMatch, $etag)) {
             return $response->withStatus(304);
         }
 
         return $response
             ->withHeader('Content-Type', 'application/json')
             ->withBody($this->streamFactory->createStream($body));
+    }
+
+    /**
+     * Whether an If-None-Match header selects this entity (RFC 9110 8.2.2):
+     * `*` matches, and the weak comparison applies, so W/"x" and "x" are the
+     * same entity. Proxies weaken ETags (nginx does when it gzips), so a strict
+     * comparison would never answer 304 behind them. Python: agent_card_routes.
+     * _if_none_match_hits() (a2a-sdk 1.2.0, 83d7f5d).
+     */
+    private static function ifNoneMatchHits(string $header, string $etag): bool
+    {
+        $strip = static fn(string $tag): string => str_starts_with($tag, 'W/') ? substr($tag, 2) : $tag;
+        foreach (array_map('trim', explode(',', $header)) as $candidate) {
+            if ($candidate === '*' || $strip($candidate) === $strip($etag)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private function cardToServe(): AgentCard

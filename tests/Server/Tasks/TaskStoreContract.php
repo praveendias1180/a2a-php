@@ -119,7 +119,8 @@ abstract class TaskStoreContract extends TestCase
         self::assertSame(['task-5', 'task-4'], self::ids($first->getTasks()));
         self::assertSame(2, $first->getPageSize());
         self::assertSame(5, $first->getTotalSize());
-        self::assertSame(TaskUtils::encodePageToken('task-3'), $first->getNextPageToken());
+        // The token carries the position of the last task returned (a2a-sdk b7cba7c).
+        self::assertSame(TaskUtils::encodeListTasksCursor(400_000_000, 'task-4'), $first->getNextPageToken());
 
         $second = $store->list(new ListTasksRequest(['page_size' => 2, 'page_token' => $first->getNextPageToken()]), Fixtures::callContext());
         self::assertSame(['task-3', 'task-2'], self::ids($second->getTasks()));
@@ -159,7 +160,61 @@ abstract class TaskStoreContract extends TestCase
 
         self::assertCount(50, $page->getTasks());
         self::assertSame(50, $page->getPageSize());
-        self::assertSame(TaskUtils::encodePageToken('t-01'), $page->getNextPageToken());
+        self::assertSame(TaskUtils::encodeListTasksCursor(2_000_000, 't-02'), $page->getNextPageToken());
+    }
+
+    public function testPagingSurvivesTasksBeingUpdatedOrDeleted(): void
+    {
+        // Python a2a-sdk 1.2.1 (b7cba7c). The old token named the first task of
+        // the next page and was looked up again: if that task was deleted the
+        // request failed, and if it was updated (moving to the top) the listing
+        // restarted and repeated tasks. The cursor holds the last returned
+        // task's position instead, so neither change breaks the next page.
+        foreach (['task-3' => 'deleted', 'task-3 ' => 'updated', 'task-4' => 'deleted', 'task-4 ' => 'updated'] as $target => $change) {
+            $target = trim($target);
+            $store = $this->createStore();
+            foreach (range(1, 5) as $i) {
+                $store->save(Fixtures::task("task-{$i}", TaskState::TASK_STATE_COMPLETED, 'c', 100 * $i), Fixtures::callContext());
+            }
+            $first = $store->list(new ListTasksRequest(['page_size' => 2]), Fixtures::callContext());
+            self::assertSame(['task-5', 'task-4'], self::ids($first->getTasks()));
+
+            if ($change === 'updated') {
+                $store->save(Fixtures::task($target, TaskState::TASK_STATE_COMPLETED, 'c', 900), Fixtures::callContext());
+            } else {
+                $store->delete($target, Fixtures::callContext());
+            }
+
+            $second = $store->list(new ListTasksRequest(['page_size' => 2, 'page_token' => $first->getNextPageToken()]), Fixtures::callContext());
+            $ids = self::ids($second->getTasks());
+            self::assertSame([], array_intersect($ids, ['task-5', 'task-4']), "{$target} {$change}: no task from page 1 is repeated");
+            // An updated task-3 moves above the cursor and is skipped, as in Python.
+            $expected = $target === 'task-3' ? ['task-2', 'task-1'] : ['task-3', 'task-2'];
+            self::assertSame($expected, $ids, "{$target} {$change}");
+        }
+    }
+
+    public function testLegacyPageTokensStillWork(): void
+    {
+        // Tokens issued by 1.0.x name the first task of the next page.
+        $store = $this->createStore();
+        foreach (range(1, 5) as $i) {
+            $store->save(Fixtures::task("task-{$i}", TaskState::TASK_STATE_COMPLETED, 'c', 100 * $i), Fixtures::callContext());
+        }
+
+        $page = $store->list(new ListTasksRequest(['page_size' => 2, 'page_token' => TaskUtils::encodePageToken('task-3')]), Fixtures::callContext());
+
+        self::assertSame(['task-3', 'task-2'], self::ids($page->getTasks()));
+        self::assertSame(TaskUtils::encodeListTasksCursor(200_000_000, 'task-2'), $page->getNextPageToken());
+    }
+
+    public function testListRejectsGarbagePageToken(): void
+    {
+        $store = $this->createStore();
+        $store->save(Fixtures::task('t', TaskState::TASK_STATE_COMPLETED, 'c', 1), Fixtures::callContext());
+
+        $this->expectException(InvalidParamsError::class);
+        $store->list(new ListTasksRequest(['page_token' => '!!not-a-token!!']), Fixtures::callContext());
     }
 
     public function testListRejectsUnknownPageToken(): void

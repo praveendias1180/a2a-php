@@ -135,29 +135,41 @@ final class PdoTaskStore implements TaskStore
         $total = (int) $count->fetchColumn();
 
         if ($params->getPageToken() !== '') {
-            $startId = TaskUtils::decodePageToken($params->getPageToken());
-            $start = $this->pdo->prepare("SELECT status_timestamp FROM {$this->table} WHERE id = :id AND owner = :owner");
-            $start->execute(['id' => $startId, 'owner' => $bind['owner']]);
-            $row = $start->fetch(\PDO::FETCH_ASSOC);
-            if (!is_array($row)) {
-                throw new InvalidParamsError(sprintf('Invalid page token: %s', $params->getPageToken()));
-            }
             // Keyset pagination over (timestamp present, timestamp desc, id desc).
-            $bind['start_id'] = $startId;
-            $startTimestamp = $row['status_timestamp'] ?? null;
-            if (!is_numeric($startTimestamp)) {
-                $filter .= ' AND status_timestamp IS NULL AND id <= :start_id';
+            // A cursor token carries the last returned task's position and the
+            // page starts strictly after it, so the token survives that task
+            // being updated or deleted (a2a-sdk b7cba7c). Legacy tokens name the
+            // first task of the page and are resolved by looking it up.
+            $cursor = TaskUtils::decodeListTasksCursor($params->getPageToken());
+            if ($cursor !== null) {
+                [$startTimestamp, $startId] = $cursor;
+                $inclusive = false;
             } else {
-                $bind['start_ts'] = (int) $startTimestamp;
-                $bind['start_ts2'] = (int) $startTimestamp;
-                $filter .= ' AND ((status_timestamp IS NOT NULL AND (status_timestamp < :start_ts OR (status_timestamp = :start_ts2 AND id <= :start_id))) OR status_timestamp IS NULL)';
+                $startId = TaskUtils::decodePageToken($params->getPageToken());
+                $start = $this->pdo->prepare("SELECT status_timestamp FROM {$this->table} WHERE id = :id AND owner = :owner");
+                $start->execute(['id' => $startId, 'owner' => $bind['owner']]);
+                $row = $start->fetch(\PDO::FETCH_ASSOC);
+                if (!is_array($row)) {
+                    throw new InvalidParamsError(sprintf('Invalid page token: %s', $params->getPageToken()));
+                }
+                $startTimestamp = is_numeric($row['status_timestamp'] ?? null) ? (int) $row['status_timestamp'] : null;
+                $inclusive = true;
+            }
+            $idOp = $inclusive ? '<=' : '<';
+            $bind['start_id'] = $startId;
+            if ($startTimestamp === null) {
+                $filter .= " AND status_timestamp IS NULL AND id {$idOp} :start_id";
+            } else {
+                $bind['start_ts'] = $startTimestamp;
+                $bind['start_ts2'] = $startTimestamp;
+                $filter .= " AND ((status_timestamp IS NOT NULL AND (status_timestamp < :start_ts OR (status_timestamp = :start_ts2 AND id {$idOp} :start_id))) OR status_timestamp IS NULL)";
             }
         }
 
         $pageSize = $params->hasPageSize() && $params->getPageSize() > 0 ? $params->getPageSize() : Constants::DEFAULT_LIST_TASKS_PAGE_SIZE;
         $limit = $pageSize + 1;
         $statement = $this->pdo->prepare(
-            "SELECT id, task_json FROM {$this->table} WHERE {$filter} "
+            "SELECT id, status_timestamp, task_json FROM {$this->table} WHERE {$filter} "
             . 'ORDER BY CASE WHEN status_timestamp IS NULL THEN 1 ELSE 0 END ASC, status_timestamp DESC, id DESC '
             . "LIMIT {$limit}",
         );
@@ -165,13 +177,14 @@ final class PdoTaskStore implements TaskStore
         $rows = [];
         foreach ($statement->fetchAll(\PDO::FETCH_ASSOC) as $row) {
             if (is_array($row) && is_string($row['id'] ?? null) && is_string($row['task_json'] ?? null)) {
-                $rows[] = ['id' => $row['id'], 'task_json' => $row['task_json']];
+                $rows[] = ['id' => $row['id'], 'ts' => is_numeric($row['status_timestamp'] ?? null) ? (int) $row['status_timestamp'] : null, 'task_json' => $row['task_json']];
             }
         }
 
         $next = '';
         if (count($rows) > $pageSize) {
-            $next = TaskUtils::encodePageToken($rows[$pageSize]['id']);
+            $last = $rows[$pageSize - 1];
+            $next = TaskUtils::encodeListTasksCursor($last['ts'], $last['id']);
             $rows = array_slice($rows, 0, $pageSize);
         }
 

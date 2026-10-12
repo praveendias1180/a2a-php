@@ -34,13 +34,7 @@ final class InMemoryPushNotificationConfigStore implements PushNotificationConfi
     public function setInfo(string $taskId, TaskPushNotificationConfig $config, ServerCallContext $context): void
     {
         $owner = ($this->ownerResolver)($context);
-        $copy = new TaskPushNotificationConfig();
-        $copy->mergeFrom($config);
-        if ($copy->getId() === '') {
-            // Python defaults the id to the task id.
-            $copy->setId($taskId);
-        }
-        $copy->setTaskId($taskId);
+        $copy = PushNotificationConfigs::normalize($taskId, $config);
         $this->configs[$owner][$taskId][$copy->getId()] = $copy;
     }
 

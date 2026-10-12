@@ -34,6 +34,15 @@ final class RoutesTest extends DispatcherTestCase
         $cached = $handler->handle(self::request('GET', '/.well-known/agent-card.json', null, ['If-None-Match' => $response->getHeaderLine('ETag')]));
         self::assertSame(304, $cached->getStatusCode());
         self::assertSame('', (string) $cached->getBody());
+
+        // RFC 9110 8.2.2 (a2a-sdk 1.2.0, 83d7f5d): weak comparison, lists and "*".
+        $etag = $response->getHeaderLine('ETag');
+        foreach (['W/' . $etag, '"other", ' . $etag, '"other" , W/' . $etag, '*'] as $header) {
+            $hit = $handler->handle(self::request('GET', '/.well-known/agent-card.json', null, ['If-None-Match' => $header]));
+            self::assertSame(304, $hit->getStatusCode(), $header);
+        }
+        $miss = $handler->handle(self::request('GET', '/.well-known/agent-card.json', null, ['If-None-Match' => '"other", W/"also-other"']));
+        self::assertSame(200, $miss->getStatusCode());
     }
 
     public function testAgentCardModifier(): void

@@ -52,9 +52,9 @@ final class Routes
      * @param (\Closure(AgentCard): AgentCard)|null $cardModifier
      * @param (\Closure(AgentCard): AgentCard)|null $signer       from Signing::createAgentCardSigner(); serves the card signed
      */
-    public static function agentCard(AgentCard $agentCard, ?\Closure $cardModifier = null, ?\Closure $signer = null): AgentCardHandler
+    public static function agentCard(AgentCard $agentCard, ?\Closure $cardModifier = null, ?\Closure $signer = null, ?LoggerInterface $logger = null): AgentCardHandler
     {
-        return new AgentCardHandler($agentCard, $cardModifier, signer: $signer);
+        return new AgentCardHandler($agentCard, $cardModifier, signer: $signer, logger: $logger);
     }
 
     /**
@@ -73,7 +73,7 @@ final class Routes
         bool $enableV03Compat = false,
     ): Router {
         $router = new Router();
-        $router->add($agentCardPath, self::agentCard($agentCard, signer: $cardSigner));
+        $router->add($agentCardPath, self::agentCard($agentCard, signer: $cardSigner, logger: $logger));
         if ($jsonRpcPath !== null) {
             $router->add($jsonRpcPath, self::jsonRpc($requestHandler, $contextBuilder, $logger, $enableV03Compat));
         }

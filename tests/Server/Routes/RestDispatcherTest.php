@@ -27,6 +27,9 @@ final class RestDispatcherTest extends DispatcherTestCase
         $response = $this->rest->handle(self::request('POST', '/a2a/rest/message:send', '{"message":{"messageId":"m","role":"ROLE_USER","parts":[{"text":"hi"}]}}'));
 
         self::assertSame(200, $response->getStatusCode());
+        // Spec v1.0.0 11.1 and the TCK (HTTP_JSON-SVC-001) want application/json;
+        // a2a-sdk 1.2.0 moved to application/a2a+json (dc5a5da), which the TCK fails.
+        self::assertSame('application/json', $response->getHeaderLine('Content-Type'));
         self::assertSame('TASK_STATE_COMPLETED', self::at(self::json($response), 'task.status.state'));
     }
 

@@ -244,6 +244,19 @@ final class ClientFactoryTest extends TestCase
         self::assertSame('a', ClientFactory::findBestInterface([$make('1.0', 'a'), $make('1.0', 'b')], null, 'a')?->getUrl());
     }
 
+    public function testPrefersV10IgnoringThePatchVersion(): void
+    {
+        // Python a2a-sdk 1.2.2: test_client_factory_prefers_1_0_ignoring_patch_version.
+        $make = static fn(string $version, string $url): AgentInterface => new AgentInterface(['protocol_binding' => 'JSONRPC', 'url' => $url, 'protocol_version' => $version]);
+
+        foreach (['1.0', '1.0.0', '1.0.3'] as $v1) {
+            self::assertSame('v1', ClientFactory::findBestInterface([$make('0.3.0', 'legacy'), $make($v1, 'v1')])?->getUrl(), $v1);
+        }
+        // A 1.0.0 interface beats a newer minor listed before it (before the fix,
+        // '1.0.0' counted as "above 1.0" and lost to the first such entry).
+        self::assertSame('v1', ClientFactory::findBestInterface([$make('1.1', 'newer'), $make('1.0.0', 'v1')])?->getUrl());
+    }
+
     public function testIsLegacyVersion(): void
     {
         self::assertTrue(ClientFactory::isLegacyVersion('0.3'));

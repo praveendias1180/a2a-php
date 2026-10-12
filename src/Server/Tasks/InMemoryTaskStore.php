@@ -78,18 +78,23 @@ final class InMemoryTaskStore implements TaskStore
         $tasks = TaskListing::sort($tasks);
         $total = count($tasks);
 
+        // The page token carries the position of the last task returned, so it
+        // stays valid if that task is updated or deleted (a2a-sdk b7cba7c). A
+        // task updated mid-listing can move above the cursor and be skipped.
         $start = 0;
         if ($params->getPageToken() !== '') {
-            $startId = TaskUtils::decodePageToken($params->getPageToken());
-            $start = null;
-            foreach ($tasks as $index => $task) {
-                if ($task->getId() === $startId) {
-                    $start = $index;
-                    break;
+            $cursor = TaskUtils::decodeListTasksCursor($params->getPageToken());
+            if ($cursor === null) {
+                $start = self::legacyStartIndex($tasks, $params->getPageToken());
+            } else {
+                $after = [$cursor[0] !== null, $cursor[0] ?? 0, $cursor[1]];
+                $start = $total;
+                foreach ($tasks as $index => $task) {
+                    if (TaskListing::sortKey($task) < $after) {
+                        $start = $index;
+                        break;
+                    }
                 }
-            }
-            if ($start === null) {
-                throw new InvalidParamsError(sprintf('Invalid page token: %s', $params->getPageToken()));
             }
         }
 
@@ -99,10 +104,34 @@ final class InMemoryTaskStore implements TaskStore
 
         return new ListTasksResponse([
             'tasks' => $page,
-            'next_page_token' => $end < $total ? TaskUtils::encodePageToken($tasks[$end]->getId()) : '',
+            'next_page_token' => $end < $total ? self::cursorFor($tasks[$end - 1]) : '',
             'page_size' => $pageSize,
             'total_size' => $total,
         ]);
+    }
+
+    private static function cursorFor(Task $task): string
+    {
+        return TaskUtils::encodeListTasksCursor(TaskListing::statusMicros($task), $task->getId());
+    }
+
+    /**
+     * Resolves a legacy page token, which names the first task of the page.
+     *
+     * @param list<Task> $tasks
+     *
+     * @throws InvalidParamsError
+     */
+    private static function legacyStartIndex(array $tasks, string $pageToken): int
+    {
+        $startId = TaskUtils::decodePageToken($pageToken);
+        foreach ($tasks as $index => $task) {
+            if ($task->getId() === $startId) {
+                return $index;
+            }
+        }
+
+        throw new InvalidParamsError(sprintf('Invalid page token: %s', $pageToken));
     }
 
     public function delete(string $taskId, ServerCallContext $context): void

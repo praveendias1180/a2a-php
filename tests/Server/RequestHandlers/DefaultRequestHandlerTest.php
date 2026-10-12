@@ -343,6 +343,25 @@ final class DefaultRequestHandlerTest extends TestCase
         $this->assertThrows(TaskNotFoundError::class, static fn() => $handler->onGetTaskPushNotificationConfig(new GetTaskPushNotificationConfigRequest(['task_id' => 't-1', 'id' => 'nope']), $ctx));
     }
 
+    public function testCreatingAPushConfigWithoutAnIdReturnsTheStoredId(): void
+    {
+        // Python a2a-sdk 1.2.2 (dac7d9d): return the stored config, not the request.
+        $this->store->save(Fixtures::task('t-1', TaskState::TASK_STATE_WORKING), Fixtures::callContext());
+        $handler = $this->handler(card: Fixtures::agentCard(push: true), pushStore: new InMemoryPushNotificationConfigStore(), pushUrlValidator: static fn(string $url): bool => true);
+        $ctx = Fixtures::callContext();
+        $request = new TaskPushNotificationConfig(['task_id' => 't-1', 'url' => 'https://hooks.example/a2a']);
+
+        $created = $handler->onCreateTaskPushNotificationConfig($request, $ctx);
+
+        self::assertSame('t-1', $created->getId(), 'an empty id defaults to the task id, as stored');
+        self::assertSame('t-1', $created->getTaskId());
+        self::assertSame('', $request->getId(), 'the request is not modified');
+        // The returned id is usable: get and delete find the config by it.
+        self::assertSame('https://hooks.example/a2a', $handler->onGetTaskPushNotificationConfig(new GetTaskPushNotificationConfigRequest(['task_id' => 't-1', 'id' => $created->getId()]), $ctx)->getUrl());
+        $handler->onDeleteTaskPushNotificationConfig(new DeleteTaskPushNotificationConfigRequest(['task_id' => 't-1', 'id' => $created->getId()]), $ctx);
+        self::assertCount(0, $handler->onListTaskPushNotificationConfigs(new ListTaskPushNotificationConfigsRequest(['task_id' => 't-1']), $ctx)->getConfigs());
+    }
+
     public function testPushNotificationsNotSupported(): void
     {
         $handler = $this->handler();

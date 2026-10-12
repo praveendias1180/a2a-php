@@ -16,6 +16,7 @@ use A2A\Server\AgentExecution\TaskRunner;
 use A2A\Server\Events\InMemoryQueueManager;
 use A2A\Server\Events\QueueManager;
 use A2A\Server\ServerCallContext;
+use A2A\Server\Tasks\PushNotificationConfigs;
 use A2A\Server\Tasks\PushNotificationConfigStore;
 use A2A\Server\Tasks\PushNotificationSender;
 use A2A\Server\Tasks\TaskStates;
@@ -110,6 +111,10 @@ final class DefaultRequestHandler implements RequestHandler
         private readonly ?float $maxSubscribeIdleSeconds = null,
         private readonly ?PushNotificationSender $pushSender = null,
     ) {
+        ProtoUtils::warnOnMissingRequiredFields($this->agentCard, 'agent_card passed to DefaultRequestHandler:', $this->logger);
+        if ($this->extendedAgentCard !== null) {
+            ProtoUtils::warnOnMissingRequiredFields($this->extendedAgentCard, 'extended_agent_card passed to DefaultRequestHandler:', $this->logger);
+        }
         $this->queueManager = $queueManager ?? new InMemoryQueueManager();
         $this->requestContextBuilder = $requestContextBuilder
             ?? new SimpleRequestContextBuilder(shouldPopulateReferredTasks: false, taskStore: $this->taskStore);
@@ -273,7 +278,10 @@ final class DefaultRequestHandler implements RequestHandler
         $this->rejectUnsafePushUrl($params->getUrl());
         $store->setInfo($params->getTaskId(), $params, $context);
 
-        return $params;
+        // Return what was stored (an empty id becomes the task id), not the
+        // request, so the client can get or delete the config by its id.
+        // Python a2a-sdk 1.2.2 (dac7d9d).
+        return PushNotificationConfigs::normalize($params->getTaskId(), $params);
     }
 
     public function onGetTaskPushNotificationConfig(GetTaskPushNotificationConfigRequest $params, ServerCallContext $context): TaskPushNotificationConfig

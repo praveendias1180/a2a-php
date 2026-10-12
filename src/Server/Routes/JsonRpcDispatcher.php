@@ -158,11 +158,12 @@ final class JsonRpcDispatcher implements RequestHandlerInterface
             try {
                 $specific = new $modelClass();
                 // Unknown fields are ignored so newer clients keep working
-                // (the spec's forward-compatibility SHOULD, DM-SERIAL-005).
-                // Python rejects them.
+                // (the spec's forward-compatibility SHOULD, DM-SERIAL-005), as
+                // Python does since a2a-sdk 1.2.0.
                 $specific->mergeFromJsonString(Common::encode($params), true);
             } catch (\Throwable $e) {
-                return $this->errorResponse($requestId, new InvalidParamsError('Invalid params: ' . $e->getMessage()));
+                // data.parseError carries the parser's message, as in Python (83f1cf8).
+                return $this->errorResponse($requestId, new InvalidParamsError('Invalid params: ' . $e->getMessage(), ['parseError' => $e->getMessage()]));
             }
 
             $context = $this->contextBuilder->build($request);

@@ -29,7 +29,12 @@ namespace A2A\Utils;
  */
 final class Jcs
 {
-    /** Maximum object/array nesting accepted by canonicalize(). */
+    /**
+     * Maximum object/array nesting accepted by canonicalize(). Depth counts
+     * OPEN CONTAINERS: the outermost brace or bracket is depth 1, and every
+     * object or array inside it adds one, an empty one included (the jcs_depth_v1
+     * corpus; Python a2a-sdk 1.2.2, 5653daf).
+     */
     public const MAX_DEPTH = 128;
 
     // JSON numbers are IEEE 754 doubles (RFC 8785 3.2.2.3), so integers
@@ -49,14 +54,20 @@ final class Jcs
     public static function canonicalize(mixed $value): string
     {
         $out = '';
-        self::write($value, $out, 0);
+        self::write($value, $out, 1);
 
         return $out;
     }
 
+    /**
+     * $depth is the number of open containers on the path to $value, the
+     * outermost at 1. Only containers carry a depth worth checking: a counter
+     * that also charged scalars (as this one did before 1.0.2) never charges an
+     * empty container leaf, and accepts one level too many.
+     */
     private static function write(mixed $value, string &$out, int $depth): void
     {
-        if ($depth > self::MAX_DEPTH) {
+        if ((is_array($value) || $value instanceof \stdClass) && $depth > self::MAX_DEPTH) {
             throw new CanonicalizationError('nesting exceeds the maximum depth of ' . self::MAX_DEPTH);
         }
 

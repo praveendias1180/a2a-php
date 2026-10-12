@@ -78,13 +78,7 @@ final class PdoPushNotificationConfigStore implements PushNotificationConfigStor
     public function setInfo(string $taskId, TaskPushNotificationConfig $config, ServerCallContext $context): void
     {
         $this->ensureTable();
-        $copy = new TaskPushNotificationConfig();
-        $copy->mergeFrom($config);
-        if ($copy->getId() === '') {
-            // Python defaults the id to the task id.
-            $copy->setId($taskId);
-        }
-        $copy->setTaskId($taskId);
+        $copy = PushNotificationConfigs::normalize($taskId, $config);
 
         $statement = $this->pdo->prepare(PdoDriver::upsert(
             $this->driver,

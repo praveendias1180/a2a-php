@@ -23,6 +23,7 @@ use Google\Protobuf\Struct;
 use Google\Protobuf\Value;
 use Google\Rpc\BadRequest;
 use Google\Rpc\BadRequest\FieldViolation;
+use Psr\Log\LoggerInterface;
 
 /**
  * Utilities for working with proto types.
@@ -301,6 +302,33 @@ final class ProtoUtils
         if ($errors !== []) {
             throw new InvalidParamsError('Validation failed', ['errors' => $errors]);
         }
+    }
+
+    public const SPEC_FIELD_PRESENCE_URL = 'https://a2a-protocol.org/latest/specification/#57-field-presence-and-optionality';
+
+    /**
+     * Logs a warning when REQUIRED fields are missing or empty, and returns
+     * whether every one is set. Unlike validateProtoRequiredFields() it never
+     * throws, so it surfaces spec violations without breaking callers that
+     * rely on non-compliant messages. Python: proto_utils.warn_on_missing_required_fields()
+     * (a2a-sdk 1.2.2).
+     */
+    public static function warnOnMissingRequiredFields(ProtobufMessage $message, string $source, LoggerInterface $logger): bool
+    {
+        $errors = self::validateRequiredFieldsInternal($message);
+        if ($errors === []) {
+            return true;
+        }
+        $name = (new \ReflectionClass($message))->getShortName();
+        $logger->warning(sprintf(
+            '%s %s is not spec-compliant - REQUIRED fields missing or empty: %s. This is allowed and does not raise, but it may not verify or interoperate across SDKs and could be rejected in a future major release. See %s',
+            $source,
+            $name,
+            implode(', ', array_column($errors, 'field')),
+            self::SPEC_FIELD_PRESENCE_URL,
+        ));
+
+        return false;
     }
 
     /**

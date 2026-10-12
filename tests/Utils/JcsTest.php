@@ -307,6 +307,71 @@ final class JcsTest extends TestCase
         }
     }
 
+    /**
+     * The jcs_depth_v1 corpus, copied verbatim from a2a-python (a2a-sdk 1.2.2,
+     * 5653daf), which takes it from a2aproject/A2A#2246. Depth counts open
+     * containers, the outermost at 1, and an empty container is its own level.
+     *
+     * @return iterable<string, array{\stdClass}>
+     */
+    public static function depthVectors(): iterable
+    {
+        $corpus = json_decode((string) file_get_contents(__DIR__ . '/Fixtures/jcs_depth_vectors.json'), false, 512, JSON_THROW_ON_ERROR);
+        self::assertInstanceOf(\stdClass::class, $corpus);
+        self::assertIsArray($corpus->vectors);
+        foreach ($corpus->vectors as $vector) {
+            self::assertInstanceOf(\stdClass::class, $vector);
+            self::assertIsString($vector->vector_id);
+            yield $vector->vector_id => [$vector];
+        }
+    }
+
+    #[DataProvider('depthVectors')]
+    public function testDepthVector(\stdClass $vector): void
+    {
+        $rule = $vector->preimage_rule;
+        self::assertInstanceOf(\stdClass::class, $rule);
+        $openers = ['object' => '{"a":', 'array' => '['];
+        $closers = ['object' => '}', 'array' => ']'];
+        $containers = $rule->containers;
+        $count = $rule->count;
+        $leaf = $rule->leaf;
+        self::assertIsArray($containers);
+        self::assertIsInt($count);
+        self::assertIsString($leaf);
+        $kinds = [];
+        foreach ($containers as $kind) {
+            self::assertIsString($kind);
+            $kinds[] = $kind;
+        }
+        $containers = $kinds;
+        $opened = $closed = '';
+        for ($i = 0; $i < $count; $i++) {
+            $opened .= $openers[$containers[$i % count($containers)]];
+        }
+        for ($i = $count - 1; $i >= 0; $i--) {
+            $closed .= $closers[$containers[$i % count($containers)]];
+        }
+        $preimage = $opened . $leaf . $closed;
+
+        // The input is checked before the output: a vector built wrong proves nothing.
+        self::assertSame($vector->preimage_bytes, strlen($preimage));
+        self::assertSame($vector->preimage_sha256, hash('sha256', $preimage));
+
+        $decoded = json_decode($preimage, false, 1024, JSON_THROW_ON_ERROR);
+        if ($vector->outcome === 'accept') {
+            $canonical = Jcs::canonicalize($decoded);
+            self::assertIsString($vector->expected_jcs_bytes_b64);
+            self::assertSame(base64_decode($vector->expected_jcs_bytes_b64, true), $canonical);
+            self::assertSame($vector->expected_sha256, hash('sha256', $canonical));
+
+            return;
+        }
+
+        $this->expectException(CanonicalizationError::class);
+        Jcs::canonicalize($decoded);
+    }
+
     public function testDeepArraysAreBounded(): void
     {
         $value = [1];

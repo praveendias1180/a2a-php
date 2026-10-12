@@ -349,6 +349,28 @@ final class A2ACardResolverTest extends TestCase
         self::assertSame('header', $scheme->getApiKeySecurityScheme()?->getLocation());
     }
 
+    /**
+     * @return iterable<string, array{string}>
+     */
+    public static function malformedCards(): iterable
+    {
+        // Python a2a-sdk 1.2.2 (486f0f6): a wrongly shaped card is a parse error.
+        yield 'securitySchemes is a string' => ['{"name":"x","securitySchemes":"oops"}'];
+        yield 'url is a list' => ['{"name":"x","url":["a"],"preferredTransport":5,"additionalInterfaces":"x"}'];
+        yield 'capability flag is a string' => ['{"name":"x","capabilities":{"streaming":"maybe"}}'];
+        yield 'skills are numbers' => ['{"name":"x","skills":[1,2]}'];
+    }
+
+    #[DataProvider('malformedCards')]
+    public function testMalformedCardShapesAreParseErrorsNotWarnings(string $json): void
+    {
+        $data = json_decode($json);
+        self::assertInstanceOf(\stdClass::class, $data);
+
+        $this->expectException(A2AClientError::class);
+        A2ACardResolver::parseAgentCard($data);
+    }
+
     public function testParseAgentCardSecuritySchemeUnknownType(): void
     {
         $card = A2ACardResolver::parseAgentCard(self::object([

@@ -186,11 +186,14 @@ final class Signing
      * Recursively removes empty strings, lists and objects (0 and false
      * stay). Returns null when nothing is left. Does not change its input.
      *
+     * $depth counts open containers on the path to $value, the outermost at
+     * 1, the same rule as Jcs::MAX_DEPTH.
+     *
      * @throws CanonicalizationError when nesting is deeper than Jcs::MAX_DEPTH
      */
-    public static function cleanEmpty(mixed $value, int $depth = 0): mixed
+    public static function cleanEmpty(mixed $value, int $depth = 1): mixed
     {
-        if ($depth > Jcs::MAX_DEPTH) {
+        if ((is_array($value) || $value instanceof \stdClass) && $depth > Jcs::MAX_DEPTH) {
             throw new CanonicalizationError('nesting exceeds the maximum depth of ' . Jcs::MAX_DEPTH);
         }
         if ($value instanceof \stdClass) {

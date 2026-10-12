@@ -88,6 +88,55 @@ final class TaskUtils
         }
     }
 
+    /**
+     * Encodes a ListTasks cursor (the sort position of the last task returned)
+     * as an opaque, URL-safe page token. The next page starts strictly after
+     * it, so the token stays valid when that task is later updated or deleted.
+     * Python: encode_list_tasks_cursor() (a2a-sdk 1.2.1, b7cba7c); PHP stores
+     * timestamps in microseconds, so the field is `us` rather than Python's
+     * nanosecond `ts`. Tokens are opaque and only read by the store that made them.
+     */
+    public static function encodeListTasksCursor(?int $timestampMicros, string $taskId): string
+    {
+        $payload = json_encode(['us' => $timestampMicros, 'id' => $taskId], JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+
+        return rtrim(strtr(base64_encode($payload), '+/', '-_'), '=');
+    }
+
+    /**
+     * Decodes a token from encodeListTasksCursor() into [timestampMicros|null,
+     * taskId], or null when it is not a cursor token. Callers treat null as a
+     * legacy token (decodePageToken()), which also rejects tampered tokens.
+     *
+     * @return array{?int, string}|null
+     */
+    public static function decodeListTasksCursor(string $pageToken): ?array
+    {
+        $raw = base64_decode(strtr($pageToken, '-_', '+/') . str_repeat('=', (4 - strlen($pageToken) % 4) % 4), true);
+        if ($raw === false) {
+            return null;
+        }
+        try {
+            $data = json_decode($raw, true, 2, JSON_THROW_ON_ERROR);
+        } catch (\JsonException) {
+            return null;
+        }
+        if (!is_array($data) || count($data) !== 2 || !array_key_exists('us', $data) || !array_key_exists('id', $data)) {
+            return null;
+        }
+        $micros = $data['us'];
+        $taskId = $data['id'];
+        if (($micros !== null && !is_int($micros)) || !is_string($taskId) || $taskId === '') {
+            return null;
+        }
+
+        return [$micros, $taskId];
+    }
+
+    /**
+     * A legacy page token (1.0.x and earlier): the id of the first task of the
+     * next page. Still accepted, resolved the old way.
+     */
     public static function encodePageToken(string $taskId): string
     {
         return base64_encode($taskId);

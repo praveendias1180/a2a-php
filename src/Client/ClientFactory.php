@@ -199,11 +199,10 @@ final class ClientFactory
             return null;
         }
 
-        foreach ($candidates as $candidate) {
-            if ($candidate->getProtocolVersion() === Constants::PROTOCOL_VERSION_1_0) {
-                return $candidate;
-            }
-        }
+        // Patch versions must not affect negotiation, so '1.0.0' counts as
+        // '1.0'. Python a2a-sdk 1.2.2 (cbb2d84) compares Major.Minor too.
+        $v10 = self::majorMinor(Constants::PROTOCOL_VERSION_1_0);
+        $v03 = self::majorMinor(Constants::PROTOCOL_VERSION_0_3);
 
         $bestGt10 = null;
         $bestGe03 = null;
@@ -218,10 +217,14 @@ final class ClientFactory
             if (!self::isValidVersion($version)) {
                 continue;
             }
-            if ($bestGt10 === null && version_compare($version, Constants::PROTOCOL_VERSION_1_0, '>')) {
+            $v = self::majorMinor($version);
+            if ($v === $v10) {
+                return $candidate;
+            }
+            if ($bestGt10 === null && $v > $v10) {
                 $bestGt10 = $candidate;
             }
-            if ($bestGe03 === null && version_compare($version, Constants::PROTOCOL_VERSION_0_3, '>=')) {
+            if ($bestGe03 === null && $v >= $v03) {
                 $bestGe03 = $candidate;
             }
         }
@@ -266,6 +269,20 @@ final class ClientFactory
         $interface = self::findBestInterface(iterator_to_array($card->getSupportedInterfaces(), false), [$binding], $url);
 
         return self::isLegacyVersion($interface?->getProtocolVersion() ?? Constants::PROTOCOL_VERSION_CURRENT);
+    }
+
+    /**
+     * The Major.Minor release of a protocol version, as a comparable pair
+     * (PHP compares same-length arrays element by element). Python:
+     * client_factory.major_minor().
+     *
+     * @return array{int, int}
+     */
+    private static function majorMinor(string $version): array
+    {
+        preg_match('/^v?(\d+)(?:\.(\d+))?/i', $version, $m);
+
+        return [(int) ($m[1] ?? 0), (int) ($m[2] ?? 0)];
     }
 
     private static function isValidVersion(string $version): bool

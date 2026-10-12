@@ -6,6 +6,31 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+## [1.0.2] - 2026-10-12
+
+Catch-up with the Python SDK from `0d5473c` to `494a8ec` (a2a-sdk 1.2.0 to 1.2.2). Interop tests now pin `a2a-sdk` 1.2.2.
+
+### Fixed
+- **ListTasks page tokens survive the listing changing.** A token named the first task of the next page and was looked up again, so deleting that task made the next request fail with `InvalidParamsError`, and updating it restarted the listing with duplicates. Tokens now carry the sort position of the last task returned (`TaskUtils::encodeListTasksCursor()`), and the next page starts strictly after it. Tokens issued by 1.0.x are still accepted. Both `InMemoryTaskStore` and `PdoTaskStore`; Python b7cba7c.
+- **`CreateTaskPushNotificationConfig` returns the id the config was stored under.** A config created without an id was stored under the task id but returned with an empty id, so the client could not get or delete it. The new `PushNotificationConfigs::normalize()` is what every store saves and what the handler returns; the store interface is unchanged. Python dac7d9d.
+- **JCS depth bound counts open containers**, the outermost at 1, so an empty object or array at depth 129 is refused like any other container past the bound (it was accepted). Also in `Signing::cleanEmpty()`. Python 5653daf.
+- **The client prefers an A2A 1.0 interface regardless of its patch version** (`1.0.0` and `1.0.3` count as `1.0`). Before, `1.0.0` was treated as "above 1.0" and could lose to another interface. Python cbb2d84.
+- **A wrongly shaped response no longer slips through as a PHP warning.** The pure-PHP protobuf runtime warns and carries on for some shape errors (for example `securitySchemes` as a string); the client now raises `A2AClientError` for those, as for any unreadable response. Python 486f0f6.
+- **Agent Card `If-None-Match` uses the weak comparison and accepts `*`** (RFC 9110). Proxies that weaken ETags, such as nginx when it gzips, got a full response every time instead of a 304. Python 83d7f5d.
+
+### Changed
+- A JSON-RPC request whose params cannot be parsed gets `InvalidParamsError` with `data.parseError` holding the parser's message. Python 83f1cf8.
+
+### Added
+- Dependabot: weekly grouped update PRs for GitHub Actions, Composer (`widen`, so supported ranges are kept) and the interop test packages. Dependabot security alerts and security updates are enabled.
+- `ProtoUtils::warnOnMissingRequiredFields()`: `DefaultRequestHandler` and the Agent Card route (given a logger) log a warning when a card misses REQUIRED fields, without failing. Python 4f4101c.
+- Tests: the cross-SDK Agent Card signature vectors (cards signed by a2a-python, @a2a-js/sdk, a2a-go and a reference signer verify in PHP, with identical canonical bytes) and the `jcs_depth_v1` depth vectors, both copied from a2a-python.
+
+### Not ported yet
+- Python's cluster mode (`a2a.server.cluster`, versioned task store). PHP already shares task state across processes through `QueueManager`; what is missing is versioned task writes. See the Python → PHP mapping.
+- Python's opt-in input-mode validation.
+- Python's `application/a2a+json` responses (dc5a5da). Spec v1.0.0 and the A2A TCK still require `application/json`, so HTTP+JSON keeps it.
+
 ## [1.0.1] - 2026-10-12
 
 Documentation, plus one static-analysis fix with no behaviour change.
@@ -163,7 +188,8 @@ First release: A2A 1.0 client and server for PHP 8.2+. The server passes the off
 - Requires `php-http/discovery` (finds a PSR-18 client when none is given) and
   `psr/http-factory` ^1.1.
 
-[Unreleased]: https://github.com/praveendias1180/a2a-php/compare/v1.0.1...HEAD
+[Unreleased]: https://github.com/praveendias1180/a2a-php/compare/v1.0.2...HEAD
+[1.0.2]: https://github.com/praveendias1180/a2a-php/releases/tag/v1.0.2
 [1.0.1]: https://github.com/praveendias1180/a2a-php/releases/tag/v1.0.1
 [1.0.0]: https://github.com/praveendias1180/a2a-php/releases/tag/v1.0.0
 [0.3.0]: https://github.com/praveendias1180/a2a-php/releases/tag/v0.3.0

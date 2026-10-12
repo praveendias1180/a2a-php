@@ -174,12 +174,20 @@ final class HttpHelpers
      */
     public static function parseJsonInto(string $json, ProtobufMessage $message, bool $ignoreUnknown = false): ProtobufMessage
     {
+        // The pure-PHP protobuf runtime answers some shape errors (e.g. a string
+        // where a map belongs) with a PHP warning and carries on. Turn those into
+        // parse errors too, as Python's parse_agent_card does since 486f0f6.
+        set_error_handler(static function (int $severity, string $message): never {
+            throw new \ErrorException($message, 0, $severity);
+        }, E_WARNING | E_NOTICE | E_USER_WARNING | E_USER_NOTICE);
         try {
             $message->mergeFromJsonString($json, $ignoreUnknown);
         } catch (\Exception $e) {
             // Python lets json_format.ParseError escape; PHP callers get one
             // catchable type for "the agent sent something we can't read".
             throw new A2AClientError(sprintf('Invalid %s in response: %s', $message::class, $e->getMessage()), null, $e);
+        } finally {
+            restore_error_handler();
         }
 
         return $message;

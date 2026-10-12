@@ -32,6 +32,20 @@ final class TaskListing
     }
 
     /**
+     * The ListTasks sort key, [has timestamp, timestamp, id]; tasks are listed
+     * in DESCENDING order of it. Arrays of the same shape compare element by
+     * element, so `<=>` orders keys correctly.
+     *
+     * @return array{bool, int, string}
+     */
+    public static function sortKey(Task $task): array
+    {
+        $micros = self::statusMicros($task);
+
+        return [$micros !== null, $micros ?? 0, $task->getId()];
+    }
+
+    /**
      * Orders tasks the way ListTasks returns them: tasks with a status
      * timestamp first, newest first, then by id descending.
      *
@@ -41,12 +55,7 @@ final class TaskListing
      */
     public static function sort(array $tasks): array
     {
-        usort($tasks, static function (Task $a, Task $b): int {
-            $ta = self::statusMicros($a);
-            $tb = self::statusMicros($b);
-
-            return [$tb !== null, $tb ?? 0, $b->getId()] <=> [$ta !== null, $ta ?? 0, $a->getId()];
-        });
+        usort($tasks, static fn(Task $a, Task $b): int => self::sortKey($b) <=> self::sortKey($a));
 
         return $tasks;
     }
