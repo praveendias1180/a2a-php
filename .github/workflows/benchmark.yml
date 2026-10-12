@@ -19,11 +19,11 @@ jobs:
         php: ['8.4']
         runtime: [pure-php, ext-protobuf]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: shivammathur/setup-php@v2
         with:
           php-version: ${{ matrix.php }}
           coverage: none
           extensions: ${{ matrix.runtime == 'ext-protobuf' && 'protobuf' || '' }}
-      - uses: ramsey/composer-install@v3
+      - uses: ramsey/composer-install@v4
       - run: php scripts/benchmark.php --seconds=3 | tee "$GITHUB_STEP_SUMMARY"

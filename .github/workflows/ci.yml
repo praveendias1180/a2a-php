@@ -25,13 +25,13 @@ jobs:
       # Runs the Laravel bridge's Redis Streams tests (skipped without it).
       A2A_TEST_REDIS: 127.0.0.1:6379
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: shivammathur/setup-php@v2
         with:
           php-version: ${{ matrix.php }}
           extensions: redis, pdo_sqlite
           coverage: none
-      - uses: ramsey/composer-install@v3
+      - uses: ramsey/composer-install@v4
         with:
           dependency-versions: ${{ matrix.deps }}
       - run: vendor/bin/phpunit
@@ -40,12 +40,12 @@ jobs:
     name: Static analysis and style
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: shivammathur/setup-php@v2
         with:
           php-version: '8.4'
           coverage: none
-      - uses: ramsey/composer-install@v3
+      - uses: ramsey/composer-install@v4
       - run: vendor/bin/phpstan analyse --no-progress
       - run: vendor/bin/php-cs-fixer fix --dry-run --diff
 
@@ -53,13 +53,13 @@ jobs:
     name: Interop with the Python SDK
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: shivammathur/setup-php@v2
         with:
           php-version: '8.4'
           coverage: none
-      - uses: ramsey/composer-install@v3
-      - uses: actions/setup-python@v5
+      - uses: ramsey/composer-install@v4
+      - uses: actions/setup-python@v7
         with:
           python-version: '3.12'
       - run: pip install -r tests/Interop/python/requirements.txt
@@ -79,19 +79,19 @@ jobs:
       # Pinned a2a-tck commit; bump deliberately (see UPSTREAM.md).
       A2A_TCK_REF: 263b9cfaf16a554bdfb166a7ba5b67716e946349
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: shivammathur/setup-php@v2
         with:
           php-version: '8.4'
           extensions: pdo_sqlite
           coverage: none
-      - uses: ramsey/composer-install@v3
-      - uses: actions/checkout@v4
+      - uses: ramsey/composer-install@v4
+      - uses: actions/checkout@v7
         with:
           repository: a2aproject/a2a-tck
           ref: ${{ env.A2A_TCK_REF }}
           path: a2a-tck
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v7
         with:
           python-version: '3.12'
       - run: pip install -e ./a2a-tck
@@ -112,7 +112,7 @@ jobs:
       - name: Keep the SHOULD report
         if: always()
         run: cp -r a2a-tck/reports tck-reports-should || true
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: always()
         with:
           name: tck-reports
@@ -132,19 +132,19 @@ jobs:
       A2A_REDIS_HOST: 127.0.0.1
       A2A_REDIS_PORT: '6379'
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: shivammathur/setup-php@v2
         with:
           php-version: '8.4'
           extensions: redis, pdo_sqlite
           coverage: none
-      - uses: ramsey/composer-install@v3
-      - uses: actions/checkout@v4
+      - uses: ramsey/composer-install@v4
+      - uses: actions/checkout@v7
         with:
           repository: a2aproject/a2a-tck
           ref: ${{ env.A2A_TCK_REF }}
           path: a2a-tck
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v7
         with:
           python-version: '3.12'
       - run: pip install -e ./a2a-tck
@@ -168,7 +168,7 @@ jobs:
           python -m venv .venv-a2a-v03
           .venv-a2a-v03/bin/pip install -r tests/Interop/python/requirements-v03.txt
           A2A_PYTHON_V03="$PWD/.venv-a2a-v03/bin/python" scripts/run-tck-laravel.sh v03-interop
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: always()
         with:
           name: tck-laravel-reports
@@ -178,7 +178,7 @@ jobs:
     name: Generated types match a2a.proto
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: bufbuild/buf-action@v1
         with:
           setup_only: true
