@@ -1,0 +1,47 @@
+# Dependabot: weekly update PRs. Every PR runs the full CI (unit tests on
+# PHP 8.2-8.5 lowest/highest, PHPStan, both TCK runs, Python interop), so a
+# broken update shows up before it is merged.
+version: 2
+updates:
+  # GitHub Actions used by the workflows (checkout, setup-php, setup-python, ...).
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      actions:
+        patterns: ["*"]
+    commit-message:
+      prefix: ci
+
+  # Composer: the core package (repo root) and the Laravel bridge.
+  # This is a library, so `widen` adds a new major to the allowed range instead
+  # of raising the minimum: users on older versions stay supported. CI's
+  # "highest" jobs test the new version, the "lowest" jobs the old minimum.
+  - package-ecosystem: composer
+    directories: ["/", "/packages/laravel"]
+    schedule:
+      interval: weekly
+    versioning-strategy: widen
+    groups:
+      composer-minor-and-patch:
+        update-types: [minor, patch]
+    commit-message:
+      prefix: deps
+      prefix-development: deps-dev
+
+  # Python packages used only by the interop tests (uvicorn, ...).
+  # a2a-sdk is NOT updated here: requirements-v03.txt deliberately pins the last
+  # 0.3 release, and the 1.x pin is bumped by hand after reviewing the Python
+  # SDK (the weekly upstream-watch issue flags new releases).
+  - package-ecosystem: pip
+    directory: /tests/Interop/python
+    schedule:
+      interval: weekly
+    ignore:
+      - dependency-name: a2a-sdk
+    groups:
+      interop:
+        patterns: ["*"]
+    commit-message:
+      prefix: test
