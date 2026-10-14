@@ -2,6 +2,9 @@
 
 The Laravel bridge (`praveendias1180/a2a-laravel`) turns the SDK into a few lines of Laravel: a route macro, an executor class resolved from the container, and config for queues and storage. All protocol behaviour stays in the core SDK, so a Laravel agent passes the same [A2A TCK](../reference/conformance.md) as a plain-PHP one.
 
+!!! tip "Start from the template"
+    [`a2a-laravel-starter`](https://github.com/praveendias1180/a2a-laravel-starter) is a Laravel 13 app with everything on this page already done: an agent, its card, the route and feature tests. `composer create-project praveendias1180/a2a-laravel-starter my-agent`, then `php artisan serve`.
+
 Laravel 12 and 13 on PHP 8.2+ (tested in CI). Laravel 11 is allowed by the constraints but untested: Composer blocks every Laravel 11 release for open security advisories.
 
 ## Install

@@ -12,6 +12,14 @@ A PHP implementation of the [A2A (Agent2Agent) protocol](https://a2a-protocol.or
 
 📖 **Documentation: <https://praveendias1180.github.io/a2a-php/>**
 
+**New to it? Start from the [Laravel starter](https://github.com/praveendias1180/a2a-laravel-starter)**: a Laravel app that is already an A2A agent, running in 2 minutes.
+
+```bash
+composer create-project praveendias1180/a2a-laravel-starter my-agent && cd my-agent && php artisan serve
+```
+
+![The Laravel starter's agent answering the official A2A CLI: its Agent Card, a streamed conversion, and a multi-turn task that asks for the missing unit](https://raw.githubusercontent.com/praveendias1180/a2a-laravel-starter/main/art/demo.gif)
+
 > **Status: stable (1.x).** Client, server, Laravel bridge, push notifications, Agent Card signing, extensions and A2A 0.3 compatibility. The server passes the official A2A TCK (plain PHP, and a Laravel app running executors on queue workers), and the SDK interoperates with the official Python SDK in both directions, including card signatures, and with the last A2A 0.3 release of the Python SDK. From 1.0 the public API follows [SemVer](https://praveendias1180.github.io/a2a-php/reference/backward-compatibility/); upgrading from 0.x: see the [upgrade guide](https://praveendias1180.github.io/a2a-php/guides/upgrading/).
 
 ## Packages
@@ -20,6 +28,7 @@ A PHP implementation of the [A2A (Agent2Agent) protocol](https://a2a-protocol.or
 |---|---|
 | [`praveendias1180/a2a-php`](https://packagist.org/packages/praveendias1180/a2a-php) | The SDK itself. Works with any framework, built on PSR-7/15/17/18. This repo. |
 | [`praveendias1180/a2a-laravel`](https://github.com/praveendias1180/a2a-laravel) | Laravel bridge: `Route::a2a()`, queued execution on your workers with live SSE streaming (Redis Streams or the database), owner-scoped storage, artisan commands. Lives in [`packages/laravel`](packages/laravel) and is published as a read-only split. |
+| [`praveendias1180/a2a-laravel-starter`](https://github.com/praveendias1180/a2a-laravel-starter) | A Laravel 13 app that is already an agent (a unit converter with a multi-turn task), with tests and CI. `composer create-project` it, or use it as a GitHub template. |
 
 Requires PHP 8.2+.
 
