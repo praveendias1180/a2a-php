@@ -53,6 +53,20 @@ final class PdoTaskStoreTest extends TaskStoreContract
         self::assertSame(['owner' => '', 'status_state' => TaskState::TASK_STATE_WORKING, 'protocol_version' => '1.0'], $row);
     }
 
+    public function testWorksOnASqliteConnectionAlreadyInATransaction(): void
+    {
+        // Laravel's RefreshDatabase opens a transaction before the app builds
+        // its stores; SQLite refuses journal_mode/synchronous changes there.
+        $pdo = new \PDO('sqlite::memory:');
+        $pdo->beginTransaction();
+
+        $store = new PdoTaskStore($pdo);
+        $store->save(Fixtures::task('t', TaskState::TASK_STATE_WORKING), Fixtures::callContext());
+
+        self::assertSame('t', $store->get('t', Fixtures::callContext())?->getId());
+        $pdo->rollBack();
+    }
+
     public function testRejectsUnsafeTablePrefix(): void
     {
         $this->expectException(\InvalidArgumentException::class);

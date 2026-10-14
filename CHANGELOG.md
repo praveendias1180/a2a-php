@@ -6,6 +6,11 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+## [1.0.3] - 2026-10-14
+
+### Fixed
+- **The PDO stores work on a SQLite connection that is already in a transaction.** Building `PdoTaskStore`, `PdoQueueManager` or `PdoPushNotificationConfigStore` set `journal_mode` and `synchronous`, which SQLite refuses inside a transaction ("Safety level may not be changed inside a transaction"). So every A2A request failed with a 500 in a Laravel app tested with `RefreshDatabase` on SQLite (the default for new Laravel apps), and in any code that builds a store inside `DB::transaction()`. Those two settings are now skipped while a transaction is open; `busy_timeout` is still set. Found while building the Laravel starter app.
+
 ## [1.0.2] - 2026-10-12
 
 Catch-up with the Python SDK from `0d5473c` to `494a8ec` (a2a-sdk 1.2.0 to 1.2.2). Interop tests now pin `a2a-sdk` 1.2.2.
@@ -188,7 +193,8 @@ First release: A2A 1.0 client and server for PHP 8.2+. The server passes the off
 - Requires `php-http/discovery` (finds a PSR-18 client when none is given) and
   `psr/http-factory` ^1.1.
 
-[Unreleased]: https://github.com/praveendias1180/a2a-php/compare/v1.0.2...HEAD
+[Unreleased]: https://github.com/praveendias1180/a2a-php/compare/v1.0.3...HEAD
+[1.0.3]: https://github.com/praveendias1180/a2a-php/releases/tag/v1.0.3
 [1.0.2]: https://github.com/praveendias1180/a2a-php/releases/tag/v1.0.2
 [1.0.1]: https://github.com/praveendias1180/a2a-php/releases/tag/v1.0.1
 [1.0.0]: https://github.com/praveendias1180/a2a-php/releases/tag/v1.0.0

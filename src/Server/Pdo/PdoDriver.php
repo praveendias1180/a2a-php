@@ -21,6 +21,9 @@ final class PdoDriver
      * Puts the connection into the mode the stores rely on and returns the
      * driver name. SQLite gets WAL + a busy timeout so concurrent PHP
      * processes (php -S workers, FPM children) wait instead of failing.
+     * Inside an open transaction (a framework's test transaction, or a store
+     * built inside DB::transaction()) SQLite refuses to change those two
+     * settings, so they are left as the connection's owner set them.
      */
     public static function prepare(\PDO $pdo): string
     {
@@ -31,9 +34,11 @@ final class PdoDriver
         }
         if ($driver === self::SQLITE) {
             $pdo->exec('PRAGMA busy_timeout = 10000');
-            // WAL needs a file; it is a no-op for :memory:.
-            $pdo->exec('PRAGMA journal_mode = WAL');
-            $pdo->exec('PRAGMA synchronous = NORMAL');
+            if (!$pdo->inTransaction()) {
+                // WAL needs a file; it is a no-op for :memory:.
+                $pdo->exec('PRAGMA journal_mode = WAL');
+                $pdo->exec('PRAGMA synchronous = NORMAL');
+            }
         }
 
         return $driver;
